@@ -302,11 +302,11 @@ up_device_battery_charge_find_available_charge_types_for_charging (UpDevice *dev
 	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
 	UpDeviceSupplyBatteryChargeTypes charge_types = self->supported_charge_types;
 
-	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)
-		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST;
-
 	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD)
 		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD;
+
+	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST;
 
 	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE)
 		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE;

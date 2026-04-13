@@ -2364,10 +2364,10 @@ class Tests(dbusmock.DBusTestCase):
         with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
             self.assertEqual(fp.read(), "Standard")
 
-        # Battery 2 switches to "Fast"
+        # Battery 2 switches to "Standard"
         battery_name = bat2_up.split("_")[-1]
         with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
-            self.assertEqual(fp.read(), "Fast")
+            self.assertEqual(fp.read(), "Standard")
 
     def test_battery_charge_limit_multiple_batteries_get_charge_threshold_settings_supported(
         self,
