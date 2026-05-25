@@ -52,6 +52,14 @@ stages:
 
 image: $FEDORA_IMAGE
 
+verify_signoff:
+  stage: pre-commit
+  script:
+    - git fetch origin master
+    - python3 contrib/git-signoff.py
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
 pre_commit:
   stage: pre-commit
   script:
