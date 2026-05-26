@@ -246,7 +246,6 @@ up_kbd_backlight_find (UpKbdBacklight *kbd_backlight)
 	gchar *path_now = NULL;
 	gchar *path_hw_changed = NULL;
 	gchar *buf_max = NULL;
-	gchar *buf_now = NULL;
 	GError *error = NULL;
 
 	kbd_backlight->priv->fd = -1;
@@ -313,7 +312,6 @@ out:
 	g_free (path_now);
 	g_free (path_hw_changed);
 	g_free (buf_max);
-	g_free (buf_now);
 	return found;
 }
 
