@@ -474,7 +474,7 @@ up_history_array_to_file (UpHistory *history, GPtrArray *list, const gchar *file
 	}
 
 	/* save to disk */
-	ret = g_file_set_contents (filename, part, -1, &error);
+	ret = g_file_set_contents_full (filename, part, -1, G_FILE_SET_CONTENTS_CONSISTENT, 0640, &error);
 	if (!ret) {
 		g_warning ("failed to set data: %s", error->message);
 		g_error_free (error);
