@@ -627,7 +627,7 @@ up_device_battery_update_info (UpDeviceBattery *self, UpBatteryInfo *info)
 static gboolean
 up_device_battery_charge_threshold_state_write(UpDeviceBattery *self, gboolean enabled, const gchar *state_file) {
 	g_autofree gchar *filename = NULL;
-	GError *error = NULL;
+	g_autoptr (GError) error = NULL;
 	const gchar *state_dir;
 
 	state_dir = up_device_battery_get_state_dir (self);
