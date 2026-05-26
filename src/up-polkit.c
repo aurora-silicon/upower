@@ -137,7 +137,6 @@ static void
 up_polkit_finalize (GObject *object)
 {
 #ifdef HAVE_POLKIT
-	g_autoptr (GError) error = NULL;
 	UpPolkit *polkit;
 	g_return_if_fail (UP_IS_POLKIT (object));
 	polkit = UP_POLKIT (object);
