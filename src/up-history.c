@@ -218,7 +218,7 @@ up_history_copy_array_timespan (const GPtrArray *array, guint timespan)
 	}
 
 	/* new data */
-	array_new = g_ptr_array_new ();
+	array_new = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 	time_now = g_get_real_time ();
 	g_debug ("limiting data to last %i seconds", timespan);
 
