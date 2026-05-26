@@ -632,7 +632,7 @@ up_device_battery_charge_threshold_state_write(UpDeviceBattery *self, gboolean e
 
 	state_dir = up_device_battery_get_state_dir (self);
 	filename = g_build_filename (state_dir, state_file, NULL);
-	if (!g_file_set_contents (filename, enabled ? "1": "0" , -1, &error)) {
+	if (!g_file_set_contents_full (filename, enabled ? "1": "0" , -1, G_FILE_SET_CONTENTS_CONSISTENT, 0640, &error)) {
 		g_error ("failed to save battery charge threshold: %s", error->message);
 		return FALSE;
 	}
