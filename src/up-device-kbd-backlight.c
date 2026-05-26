@@ -364,8 +364,14 @@ up_device_kbd_backlight_init (UpDeviceKbdBacklight *kbd_backlight)
 static void
 up_device_kbd_backlight_finalize (GObject *object)
 {
+	UpDeviceKbdBacklight *kbd_backlight = UP_DEVICE_KBD_BACKLIGHT (object);
+	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (kbd_backlight);
+
 	g_return_if_fail (object != NULL);
 	g_return_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (object));
+
+	g_clear_object (&priv->daemon);
+	g_clear_object (&priv->native);
 
 	G_OBJECT_CLASS (up_device_kbd_backlight_parent_class)->finalize (object);
 }
