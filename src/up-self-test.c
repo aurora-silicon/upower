@@ -285,6 +285,8 @@ up_test_history_func (void)
 	/* remove these test files */
 	up_test_history_remove_temp_files ();
 	rmdir (history_dir);
+	g_free (history_dir);
+	history_dir = NULL;
 }
 
 static void
