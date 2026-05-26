@@ -41,8 +41,8 @@ static gboolean opt_monitor_detail = FALSE;
 static gchar *
 up_tool_get_timestamp (void)
 {
-	gchar *str_time;
-	gchar *timestamp;
+	g_autofree gchar *str_time = NULL;
+	g_autofree gchar *timestamp = NULL;
 	time_t the_time;
 	struct timeval time_val;
 
@@ -53,8 +53,7 @@ up_tool_get_timestamp (void)
 
 	/* generate header text */
 	timestamp = g_strdup_printf ("%s.%03i", str_time, (gint) time_val.tv_usec / 1000);
-	g_free (str_time);
-	return timestamp;
+	return g_steal_pointer (&timestamp);
 }
 
 /**
@@ -63,16 +62,14 @@ up_tool_get_timestamp (void)
 static void
 up_tool_device_added_cb (UpClient *client, UpDevice *device, gpointer user_data)
 {
-	gchar *timestamp;
-	gchar *text = NULL;
+	g_autofree gchar *timestamp = NULL;
+	g_autofree gchar *text = NULL;
 	timestamp = up_tool_get_timestamp ();
 	g_print ("[%s]\tdevice added:     %s\n", timestamp, up_device_get_object_path (device));
 	if (opt_monitor_detail) {
 		text = up_device_to_text (device);
 		g_print ("%s\n", text);
 	}
-	g_free (timestamp);
-	g_free (text);
 }
 
 /**
@@ -81,8 +78,8 @@ up_tool_device_added_cb (UpClient *client, UpDevice *device, gpointer user_data)
 static void
 up_tool_device_changed_cb (UpDevice *device, GParamSpec *pspec, gpointer user_data)
 {
-	gchar *timestamp;
-	gchar *text = NULL;
+	g_autofree gchar *timestamp = NULL;
+	g_autofree gchar *text = NULL;
 	timestamp = up_tool_get_timestamp ();
 	g_print ("[%s]\tdevice changed:     %s\n", timestamp, up_device_get_object_path (device));
 	if (opt_monitor_detail) {
@@ -90,8 +87,6 @@ up_tool_device_changed_cb (UpDevice *device, GParamSpec *pspec, gpointer user_da
 		text = up_device_to_text (device);
 		g_print ("%s\n", text);
 	}
-	g_free (timestamp);
-	g_free (text);
 }
 
 /**
@@ -100,12 +95,11 @@ up_tool_device_changed_cb (UpDevice *device, GParamSpec *pspec, gpointer user_da
 static void
 up_tool_device_removed_cb (UpClient *client, const char *object_path, gpointer user_data)
 {
-	gchar *timestamp;
+	g_autofree gchar *timestamp = NULL;
 	timestamp = up_tool_get_timestamp ();
 	g_print ("[%s]\tdevice removed:   %s\n", timestamp, object_path);
 	if (opt_monitor_detail)
 		g_print ("\n");
-	g_free (timestamp);
 }
 
 /**
@@ -114,11 +108,11 @@ up_tool_device_removed_cb (UpClient *client, const char *object_path, gpointer u
 static void
 up_client_print (UpClient *client)
 {
-	gchar *daemon_version;
+	g_autofree gchar *daemon_version = NULL;
 	gboolean on_battery;
 	gboolean lid_is_closed;
 	gboolean lid_is_present;
-	char *action;
+	g_autofree gchar *action = NULL;
 
 	g_object_get (client,
 		      "daemon-version", &daemon_version,
@@ -133,9 +127,6 @@ up_client_print (UpClient *client)
 	g_print ("  lid-is-present:  %s\n", lid_is_present ? "yes" : "no");
 	action = up_client_get_critical_action (client);
 	g_print ("  critical-action: %s\n", action);
-	g_free (action);
-
-	g_free (daemon_version);
 }
 
 /**
@@ -144,14 +135,14 @@ up_client_print (UpClient *client)
 static void
 up_tool_changed_cb (UpClient *client, GParamSpec *pspec, gpointer user_data)
 {
-	gchar *timestamp;
+	g_autofree gchar *timestamp = NULL;
+
 	timestamp = up_tool_get_timestamp ();
 	g_print ("[%s]\tdaemon changed:\n", timestamp);
 	if (opt_monitor_detail) {
 		up_client_print (client);
 		g_print ("\n");
 	}
-	g_free (timestamp);
 }
 
 /**
@@ -160,7 +151,7 @@ up_tool_changed_cb (UpClient *client, GParamSpec *pspec, gpointer user_data)
 static gboolean
 up_tool_do_monitor (UpClient *client, GMainLoop *loop)
 {
-	g_autoptr(GPtrArray) devices = NULL;
+	g_autoptr (GPtrArray) devices = NULL;
 	guint i;
 
 	g_print ("Monitoring activity from the power daemon. Press Ctrl+C to cancel.\n");
@@ -296,7 +287,7 @@ main (int argc, char **argv)
 	g_autofree gchar *text = NULL;
 
 	g_autoptr (UpClient) client = NULL;
-	UpDevice *device;
+	g_autoptr (UpDevice) device = NULL;
 
 	const GOptionEntry entries[] = {
 		{ "battery", 'b', 0, G_OPTION_ARG_NONE, &opt_battery, _("Dump all parameters for battery objects"), NULL },
@@ -385,9 +376,7 @@ main (int argc, char **argv)
 		} else {
 			text = up_device_to_text (device);
 			g_print ("%s\n", text);
-			g_free (text);
 		}
-		g_object_unref (device);
 		return EXIT_SUCCESS;
 	}
 }
