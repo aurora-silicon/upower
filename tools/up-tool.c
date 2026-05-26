@@ -160,7 +160,7 @@ up_tool_changed_cb (UpClient *client, GParamSpec *pspec, gpointer user_data)
 static gboolean
 up_tool_do_monitor (UpClient *client)
 {
-	GPtrArray *devices;
+	g_autoptr(GPtrArray) devices = NULL;
 	guint i;
 
 	g_print ("Monitoring activity from the power daemon. Press Ctrl+C to cancel.\n");
