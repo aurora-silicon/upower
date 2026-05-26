@@ -71,13 +71,7 @@ struct _UpDeviceSupplyBattery
 {
 	UpDeviceBattery		 parent;
 	gboolean		 has_coldplug_values;
-	gboolean		 coldplug_units;
-	gdouble			*energy_old;
-	guint			 energy_old_first;
-	gdouble			 rate_old;
 	guint			 supported_charge_types;
-	UpDeviceSupplyBatteryChargeTypes charge_type;
-	UpDeviceSupplyBatteryChargeThresholdSettings charge_threshold_settings;
 	gboolean		 charge_threshold_by_charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
@@ -336,7 +330,6 @@ up_device_battery_get_supported_charge_types (UpDevice *device, UpBatteryInfo *i
 	for (int i = 0; i < g_strv_length(types); i++) {
 		if (g_utf8_strchr (types[i], 1, '[') != NULL) {
 			tmp_type = remove_brackets (types[i]);
-			self->charge_type = up_device_battery_charge_type_str_to_enum (tmp_type);
 		} else {
 			tmp_type = g_strdup (types[i]);
 		}
