@@ -162,7 +162,11 @@ up_device_bluez_coldplug (UpDevice *device)
 	UpDeviceKind kind;
 	const char *uuid;
 	const char *model;
-	GVariant *v;
+	g_autoptr (GVariant) v_appearance = NULL;
+	g_autoptr (GVariant) v_class = NULL;
+	g_autoptr (GVariant) v_address = NULL;
+	g_autoptr (GVariant) v_alias = NULL;
+	g_autoptr (GVariant) v_percentage = NULL;
 	guchar percentage;
 
 	/* Static device properties */
@@ -182,30 +186,27 @@ up_device_bluez_coldplug (UpDevice *device)
 		return FALSE;
 	}
 
-	v = g_dbus_proxy_get_cached_property (proxy, "Appearance");
-	if (v && g_variant_get_uint16 (v) != 0) {
+	v_appearance = g_dbus_proxy_get_cached_property (proxy, "Appearance");
+	v_class = g_dbus_proxy_get_cached_property (proxy, "Class");
+	if (v_appearance && g_variant_get_uint16 (v_appearance) != 0) {
 		guint16 appearance;
 
-		appearance = g_variant_get_uint16 (v);
+		appearance = g_variant_get_uint16 (v_appearance);
 		kind = appearance_to_kind (appearance);
-		g_variant_unref (v);
-	} else if ((v = g_dbus_proxy_get_cached_property (proxy, "Class"))) {
+	} else if (v_class) {
 		guint32 class;
 
-		class = g_variant_get_uint32 (v);
+		class = g_variant_get_uint32 (v_class);
 		kind = class_to_kind (class);
-		g_variant_unref (v);
 	} else {
 		kind = UP_DEVICE_KIND_BLUETOOTH_GENERIC;
 	}
 
-	v = g_dbus_proxy_get_cached_property (proxy, "Address");
-	uuid = g_variant_get_string (v, NULL);
-	g_variant_unref (v);
+	v_address = g_dbus_proxy_get_cached_property (proxy, "Address");
+	uuid = g_variant_get_string (v_address, NULL);
 
-	v = g_dbus_proxy_get_cached_property (proxy, "Alias");
-	model = g_variant_get_string (v, NULL);
-	g_variant_unref (v);
+	v_alias = g_dbus_proxy_get_cached_property (proxy, "Alias");
+	model = g_variant_get_string (v_alias, NULL);
 
 	/* hardcode some values */
 	g_object_set (device,
@@ -234,7 +235,8 @@ up_device_bluez_coldplug (UpDevice *device)
 		return FALSE;
 	}
 
-	percentage = g_variant_get_byte (g_dbus_proxy_get_cached_property (proxy, "Percentage"));
+	v_percentage = g_dbus_proxy_get_cached_property (proxy, "Percentage");
+	percentage = g_variant_get_byte (v_percentage);
 
 	g_object_set (device,
 		      "is-present", TRUE,
