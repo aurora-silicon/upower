@@ -184,7 +184,7 @@ ensure_history (UpDevice *device)
 }
 
 static gboolean
-up_device_history_filter (UpDevice *device, UpHistory *history)
+up_device_history_filter (UpDevice *device)
 {
 	UpExportedDevice *skeleton = UP_EXPORTED_DEVICE (device);
 
@@ -204,7 +204,7 @@ update_history (UpDevice *device)
 
 	ensure_history (device);
 
-	if (!up_device_history_filter (device, priv->history))
+	if (!up_device_history_filter (device))
 		return;
 
 	/* save new history */
