@@ -91,12 +91,14 @@ static gint
 up_input_str_to_bitmask (const gchar *s, glong *bitmask, size_t max_size)
 {
 	gint i, j;
-	gchar **v;
+	g_auto (GStrv) v = NULL;
 	gint num_bits_set = 0;
+	gsize max_elements = max_size / sizeof(glong);
 
 	memset (bitmask, 0, max_size);
-	v = g_strsplit (s, " ", max_size);
-	for (i = g_strv_length (v) - 1, j = 0; i >= 0; i--, j++) {
+
+	v = g_strsplit (s, " ", 0);
+	for (i = g_strv_length (v) - 1, j = 0; i >= 0 && (size_t) j < max_elements; i--, j++) {
 		gulong val;
 
 		val = strtoul (v[i], NULL, 16);
@@ -107,7 +109,6 @@ up_input_str_to_bitmask (const gchar *s, glong *bitmask, size_t max_size)
 			val &= (val - 1);
 		}
 	}
-	g_strfreev(v);
 
 	return num_bits_set;
 }
