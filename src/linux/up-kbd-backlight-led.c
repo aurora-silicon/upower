@@ -181,7 +181,6 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	UpKbdBacklightLedPrivate *priv = up_kbd_backlight_led_get_instance_private (kbd);
 	gint brightness = 0;
 	gchar buf[16];
-	g_autofree gchar *ret_str = NULL;
 	glong len;
 	gchar *end = NULL;
 
