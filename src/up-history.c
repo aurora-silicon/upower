@@ -57,11 +57,6 @@ struct UpHistoryPrivate
 	gchar			*dir;
 };
 
-enum {
-	UP_HISTORY_PROGRESS,
-	UP_HISTORY_LAST_SIGNAL
-};
-
 G_DEFINE_TYPE_WITH_PRIVATE (UpHistory, up_history, G_TYPE_OBJECT)
 
 /**
