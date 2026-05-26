@@ -28,11 +28,11 @@
 #include <sys/time.h>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
+#include <glib-unix.h>
 #include <locale.h>
 
 #include "upower.h"
 
-static GMainLoop *loop;
 static gboolean opt_monitor_detail = FALSE;
 
 /**
@@ -158,7 +158,7 @@ up_tool_changed_cb (UpClient *client, GParamSpec *pspec, gpointer user_data)
  * up_tool_do_monitor:
  **/
 static gboolean
-up_tool_do_monitor (UpClient *client)
+up_tool_do_monitor (UpClient *client, GMainLoop *loop)
 {
 	g_autoptr(GPtrArray) devices = NULL;
 	guint i;
@@ -265,24 +265,35 @@ up_tool_output_enumerate (UpClient *client)
 	return 0;
 }
 
+static gboolean
+up_tool_signal_cb (gpointer user_data)
+{
+	GMainLoop *loop = user_data;
+
+	g_debug ("Caught signal, exiting");
+	g_main_loop_quit (loop);
+	return G_SOURCE_REMOVE;
+}
+
 /**
  * main:
  **/
 int
 main (int argc, char **argv)
 {
+	g_autoptr (GMainLoop) loop = NULL;
 	GOptionContext *context;
 	gboolean opt_battery = FALSE;
 	gboolean opt_dump = FALSE;
 	gboolean opt_enumerate = FALSE;
 	gboolean opt_monitor = FALSE;
-	gchar *opt_show_info = FALSE;
+	g_autofree gchar *opt_show_info = NULL;
 	gboolean opt_version = FALSE;
 	GList *device_filter = NULL;
 	gboolean ret;
 	gint retval;
 	GError *error = NULL;
-	gchar *text = NULL;
+	g_autofree gchar *text = NULL;
 
 	g_autoptr (UpClient) client = NULL;
 	UpDevice *device;
@@ -313,7 +324,6 @@ main (int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	loop = g_main_loop_new (NULL, FALSE);
 	client = up_client_new_full (NULL, &error);
 	if (client == NULL) {
 		g_warning ("Cannot connect to upowerd: %s", error->message);
@@ -347,7 +357,21 @@ main (int argc, char **argv)
 	}
 
 	if (opt_monitor || opt_monitor_detail) {
-		if (!up_tool_do_monitor (client))
+		loop = g_main_loop_new (NULL, FALSE);
+
+		g_unix_signal_add_full (G_PRIORITY_DEFAULT,
+					SIGINT,
+					up_tool_signal_cb,
+					loop,
+					NULL);
+
+		g_unix_signal_add_full (G_PRIORITY_DEFAULT,
+					SIGTERM,
+					up_tool_signal_cb,
+					loop,
+					NULL);
+
+		if (!up_tool_do_monitor (client, loop))
 			return EXIT_FAILURE;
 		return EXIT_SUCCESS;
 	}
