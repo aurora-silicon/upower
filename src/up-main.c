@@ -287,7 +287,7 @@ main (gint argc, gchar **argv)
 
 	/* immediately exit */
 	if (immediate_exit) {
-		g_timeout_add (50, (GSourceFunc) up_main_timed_exit_cb, state);
+		timer_id = g_timeout_add (50, (GSourceFunc) up_main_timed_exit_cb, state);
 		g_source_set_name_by_id (timer_id, "[upower] up_main_timed_exit_cb");
 	}
 
