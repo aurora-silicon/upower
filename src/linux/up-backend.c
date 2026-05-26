@@ -894,6 +894,7 @@ up_backend_finalize (GObject *object)
 	g_clear_object (&backend->priv->daemon);
 	g_clear_object (&backend->priv->device_list);
 	g_clear_object (&backend->priv->gudev_client);
+	g_clear_object (&backend->priv->udev_enum);
 
 	bus = g_dbus_proxy_get_connection (backend->priv->logind_proxy);
 	g_dbus_connection_signal_unsubscribe (bus,
