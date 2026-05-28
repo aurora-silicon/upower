@@ -4,6 +4,7 @@ include:
     file:
       - '/templates/fedora.yml'
       - '/templates/debian.yml'
+      - '/templates/ci-fairy.yml'
 
 variables:
   FDO_DISTRIBUTION_TAG: latest
@@ -52,12 +53,18 @@ stages:
 image: $FEDORA_IMAGE
 
 verify_signoff:
+  extends:
+    - .fdo.ci-fairy
   stage: pre-commit
   script:
-    - git fetch origin master
-    - python3 contrib/git-signoff.py
+    - ci-fairy -vv check-commits --signed-off-by --junit-xml=results.xml
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: 100
+  artifacts:
+    reports:
+      junit: results.xml
 
 pre_commit:
   stage: pre-commit
