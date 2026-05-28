@@ -1,10 +1,9 @@
 include:
   - project: 'freedesktop/ci-templates'
-    ref: master
-    file: '/templates/fedora.yml'
-  - project: 'freedesktop/ci-templates'
-    ref: master
-    file: '/templates/debian.yml'
+    ref: 799270f0e582ec6bbf460680c9a4f8f0d2ce7517
+    file:
+      - '/templates/fedora.yml'
+      - '/templates/debian.yml'
 
 variables:
   FDO_DISTRIBUTION_TAG: latest
