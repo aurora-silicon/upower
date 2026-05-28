@@ -3707,6 +3707,64 @@ class Tests(dbusmock.DBusTestCase):
 
         self.stop_daemon()
 
+    def test_history_zero_resolution_no_crash(self):
+        """GetHistory with resolution=0 should not crash the daemon (FPE fix)"""
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "50000000",
+                "voltage_now",
+                "12000000",
+            ],
+            [],
+        )
+
+        self.start_daemon()
+
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 1)
+        bat0_up = devs[0]
+
+        # Allow the initial cold-plug to populate history data
+        time.sleep(0.5)
+
+        # Before the fix, resolution=0 would cause integer division by zero
+        # (SIGFPE) inside up_history_array_limit_resolution, crashing the daemon.
+        result = self.dbus.call_sync(
+            UP,
+            bat0_up,
+            UP_DEVICE,
+            "GetHistory",
+            GLib.Variant("(suu)", ("charge", 0, 0)),
+            GLib.VariantType.new("(a(udu))"),
+            Gio.DBusCallFlags.NO_AUTO_START,
+            -1,
+            None,
+        )
+
+        history_data = result.unpack()[0]
+        self.assertEqual(len(history_data), 0)
+
+        # Verify the daemon is still responsive after the call
+        devs_after = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs_after), 1)
+
+        self.stop_daemon()
+
     def test_battery_id_change(self):
         """check that we save/load the history correctly when the ID changes"""
 

@@ -134,6 +134,9 @@ up_history_array_limit_resolution (GPtrArray *array, guint max_num)
 	new = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 	g_debug ("length of array (before) %i", array->len);
 
+	if (max_num == 0)
+		return new;
+
 	/* check length */
 	length = array->len;
 	if (length == 0)
