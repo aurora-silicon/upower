@@ -81,8 +81,7 @@ test_nut_hwdb:
   allow_failure: true
   script:
     - curl https://raw.githubusercontent.com/networkupstools/nut/master/scripts/upower/95-upower-hid.hwdb >rules/95-upower-hid.hwdb
-    - git diff
-    - "! git status -s | grep -q ."
+    - git diff --exit-code
 
 build:
   stage: build
