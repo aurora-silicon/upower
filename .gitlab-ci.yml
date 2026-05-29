@@ -297,4 +297,4 @@ docs:
     - master
   variables:
     MESON_ARGS: '-Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled'
-    MESON_EXTRA_ARGS: 'Upower-doc'
+    NINJA_ARGS: 'UPower-doc'
