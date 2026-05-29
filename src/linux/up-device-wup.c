@@ -418,7 +418,7 @@ up_device_wup_finalize (GObject *object)
 	wup = UP_DEVICE_WUP (object);
 	g_return_if_fail (wup->priv != NULL);
 
-	if (wup->priv->fd > 0)
+	if (wup->priv->fd >= 0)
 		close (wup->priv->fd);
 
 	G_OBJECT_CLASS (up_device_wup_parent_class)->finalize (object);
