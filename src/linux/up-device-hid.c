@@ -460,7 +460,7 @@ up_device_hid_finalize (GObject *object)
 	hid = UP_DEVICE_HID (object);
 	g_return_if_fail (hid->priv != NULL);
 
-	if (hid->priv->fd > 0)
+	if (hid->priv->fd >= 0)
 		close (hid->priv->fd);
 
 	G_OBJECT_CLASS (up_device_hid_parent_class)->finalize (object);
