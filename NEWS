@@ -1,3 +1,15 @@
+Version 1.91.3
+--------------
+Released: 2026-07-02
+
+- Feature: up-device-battery: Prefer "Standard" over "Fast" charging (!316, #344)
+- Fix: Resolve potential leaks (!327)
+- Fix: Potential out-of-bound access (!328)
+- Fix: Improve access control (!326)
+- Fix: Remove unused codes (!329)
+- Fix: Fix for Asus Battery Charge Threshold Detection (!330, #347)
+- CI: code refactoring (!324)
+
 Version 1.91.2
 --------------
 Released: 2026-04-01
