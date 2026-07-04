@@ -1,11 +1,11 @@
-# Georgian translation for devicekit-power.
+# Georgian translation for upower.
 # Copyright (C) 2022 Free Software Foundation, Inc.
-# This file is distributed under the same license as the devicekit-power package.
+# This file is distributed under the same license as the upower package.
 # Temuri Doghonadze  <temuri.doghonadze@gmail.com>, 2022
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: devicekit-power\n"
+"Project-Id-Version: upower\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2022-05-17 10:52+0200\n"
 "PO-Revision-Date: 2022-07-17 08:03+0200\n"
@@ -21,16 +21,16 @@ msgstr ""
 #. TRANSLATORS: exit after we've started up, used for user profiling
 #: src/up-main.c:190
 msgid "Exit after a small delay"
-msgstr "გამოსვლამდე მცირე დაყოვნება"
+msgstr "მცირე დაყოვნება გასვლამდე"
 
 #. TRANSLATORS: exit straight away, used for automatic profiling
 #: src/up-main.c:193
 msgid "Exit after the engine has loaded"
-msgstr "გამოსვლა ძრავის ჩატვირთვის შემდეგ"
+msgstr "გასვლა ძრავის ჩატვირთვის შემდეგ"
 
 #: src/up-main.c:195
 msgid "Replace the old daemon"
-msgstr "ძველი დემონის შეცვლა"
+msgstr "ძველი დემონის ჩანაცვლება"
 
 #: src/up-main.c:197
 msgid "Show extra debugging information"
@@ -60,41 +60,3 @@ msgstr "მონიტორინგი დეტალებით"
 msgid "Show information about object path"
 msgstr "ობიექტის ბილიკის ინფორმაციის ჩვენება"
 
-#~ msgid "Authentication is required to hibernate the system"
-#~ msgstr "Autentisering krävs för att försätta systemet i viloläge"
-
-#~ msgid "Authentication is required to suspend the system"
-#~ msgstr "Autentisering krävs för att försätta systemet i vänteläge"
-
-#~ msgid "Hibernate the system"
-#~ msgstr "Försätt systemet i viloläge"
-
-#~ msgid "Suspend the system"
-#~ msgstr "Försätt systemet i vänteläge"
-
-#~ msgid "Authentication is required to cancel a latency request"
-#~ msgstr "Autentisering krävs för att avbryta en fördröjningsbegäran"
-
-#~ msgid "Authentication is required to set a persistent latency setting"
-#~ msgstr "Autentisering krävs för att ställa in en bestående fördröjningsinställning"
-
-#~ msgid "Authentication is required to set administrator settings for latency control"
-#~ msgstr "Autentisering krävs för att ställa in administratörsinställningar för fördröjningskontroll"
-
-#~ msgid "Authentication is required to set the required latency of an application"
-#~ msgstr "Autentisering krävs för att ställa in nödvändig fördröjning för ett program"
-
-#~ msgid "Cancel a latency request"
-#~ msgstr "Avbryt en fördröjningsbegäran"
-
-#~ msgid "Set a persistent latency setting"
-#~ msgstr "Ställ in en bestående fördröjningsinställning"
-
-#~ msgid "Set administrator settings for latency control"
-#~ msgstr "Ställ in administratörsinställningar för fördröjningskontroll"
-
-#~ msgid "Set the required latency of an application"
-#~ msgstr "Ställ in nödvändig fördröjning för ett program"
-
-#~ msgid "Get the wakeup data"
-#~ msgstr "Hämta uppvakningsdata"
