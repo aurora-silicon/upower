@@ -6236,6 +6236,146 @@ class Tests(dbusmock.DBusTestCase):
         os.rmdir(conf_d_dir_path)
         os.rmdir(base_dir.name)
 
+    def test_multiple_batteries_with_incorrect_energy_full_issue336(self):
+        """
+        Report energy_full=0 for a battery.
+        energy_full_design is used when energy_full is 0.
+        """
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "80000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "14000000",
+                "power_now",
+                "14000000",
+                "voltage_now",
+                "12000000",
+                "capacity",
+                "40",
+            ],
+            [],
+        )
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT1",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "0",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "14000000",
+                "power_now",
+                "14000000",
+                "voltage_now",
+                "12000000",
+                "capacity",
+                "60",
+            ],
+            [],
+        )
+
+        self.start_daemon(warns=True)
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+
+        # BAT0: energy_full=80 Wh, energy_now=14 Wh
+        # BAT1: energy_full=0 -> fallback to energy_full_design=80 Wh, energy_now=14 Wh
+        # percentage = 100 * (14 + 14) / (80 + 80) = 17.5%
+        self.assertAlmostEqual(self.get_dbus_display_property("Percentage"), 17.5)
+        self.stop_daemon()
+
+    def test_multiple_batteries_time_to_empty_with_incorrect_energy_full_issue336(self):
+        """
+        Report energy_full=0 for a battery.
+        UPower tries to estimate TimeToEmpty based on the energy_full_design value.
+        """
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "80000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "14000000",
+                "power_now",
+                "7000000",
+                "voltage_now",
+                "12000000",
+                "capacity",
+                "40",
+            ],
+            [],
+        )
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT1",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "0",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "14000000",
+                "power_now",
+                "7000000",
+                "voltage_now",
+                "12000000",
+                "capacity",
+                "60",
+            ],
+            [],
+        )
+
+        self.start_daemon(warns=True)
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+
+        # energy_total = 14.0 + 14.0 = 28.0 (Wh)
+        # energy_rate_total = 7.0 + 7.0 = 14.0 (W)
+        # time_to_empty = SECONDS_PER_HOUR * (28.0 / 14.0) = 7200
+        self.assertEqual(self.get_dbus_display_property("TimeToEmpty"), 7200)
+        self.stop_daemon()
+
     #
     # Helper methods
     #

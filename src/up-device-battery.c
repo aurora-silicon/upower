@@ -228,6 +228,14 @@ up_device_battery_update_poll_frequency (UpDeviceBattery *self,
 	}
 }
 
+static gdouble
+up_device_battery_calc_capacity (gdouble energy_full, gdouble energy_design)
+{
+	if (energy_design > 0.0)
+		return MIN (energy_full / energy_design * 100.0, 100.0);
+	return 0.0;
+}
+
 void
 up_device_battery_report (UpDeviceBattery *self,
 			  UpBatteryValues *values,
@@ -307,13 +315,13 @@ up_device_battery_report (UpDeviceBattery *self,
 		priv->energy_full = values->energy.cur;
 		g_object_set (self,
 		              /* How healthy the battery is (clamp to 100% if it can hold more charge than expected) */
-		              "capacity", MIN (priv->energy_full / priv->energy_design * 100.0, 100),
+		              "capacity", up_device_battery_calc_capacity (priv->energy_full, priv->energy_design),
 		              "energy-full", priv->energy_full,
 		              NULL);
 	}
 
 	/* Infer percentage if unknown */
-	if (values->percentage <= 0)
+	if (values->percentage <= 0 && priv->energy_full > 0.0)
 		values->percentage = values->energy.cur / priv->energy_full * 100;
 
 	/* NOTE: We used to do more for the UNKNOWN state. However, some of the
@@ -574,7 +582,7 @@ up_device_battery_update_info (UpDeviceBattery *self, UpBatteryInfo *info)
 
 			g_object_set (self,
 			              /* How healthy the battery is (clamp to 100% if it can hold more charge than expected) */
-			              "capacity", MIN (priv->energy_full / priv->energy_design * 100.0, 100),
+			              "capacity", up_device_battery_calc_capacity (priv->energy_full, priv->energy_design),
 			              "energy-full", priv->energy_full,
 			              "energy-full-design", priv->energy_design,
 			              NULL);

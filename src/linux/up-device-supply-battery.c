@@ -415,16 +415,21 @@ up_device_supply_battery_refresh (UpDevice *device,
 	info.voltage_design = up_device_supply_battery_get_design_voltage (self, native);
 	info.charge_cycles = g_udev_device_get_sysfs_attr_as_int_uncached (native, "cycle_count");
 
-	info.units = UP_BATTERY_UNIT_ENERGY;
-	info.energy.full = g_udev_device_get_sysfs_attr_as_double_uncached (native, "energy_full") / 1000000.0;
-	info.energy.design = g_udev_device_get_sysfs_attr_as_double_uncached (native, "energy_full_design") / 1000000.0;
-
-	/* Assume we couldn't read anything if energy.full is extremely small */
-	if (info.energy.full < 0.01) {
+	if (g_udev_device_has_sysfs_attr (native, "energy_full")) {
+		info.units = UP_BATTERY_UNIT_ENERGY;
+		info.energy.full = g_udev_device_get_sysfs_attr_as_double_uncached (native, "energy_full") / 1000000.0;
+		info.energy.design = g_udev_device_get_sysfs_attr_as_double_uncached (native, "energy_full_design") / 1000000.0;
+	} else if (g_udev_device_has_sysfs_attr (native, "charge_full")) {
 		info.units = UP_BATTERY_UNIT_CHARGE;
 		info.energy.full = g_udev_device_get_sysfs_attr_as_double_uncached (native, "charge_full") / 1000000.0;
 		info.energy.design = g_udev_device_get_sysfs_attr_as_double_uncached (native, "charge_full_design") / 1000000.0;
+	} else {
+		g_info ("energy_full and charge_full are not found, set energy_full to 0.0");
+		info.units = UP_BATTERY_UNIT_ENERGY;
+		info.energy.full = 0.0;
+		info.energy.design = 0.0;
 	}
+
 	technology = get_sysfs_attr_uncached (native, "technology");
 	info.technology = up_convert_device_technology (technology);
 
