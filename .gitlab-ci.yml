@@ -150,7 +150,7 @@ verify_signoff:
     - .fdo.ci-fairy
   stage: pre-commit
   script:
-    - ci-fairy -vv check-commits --signed-off-by --junit-xml=results.xml
+    - ci-fairy -vv check-commits --signed-off-by --textwidth 100 --junit-xml=results.xml
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   variables:
