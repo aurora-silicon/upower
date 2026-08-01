@@ -117,6 +117,41 @@ up_backend_uevent_signal_handler_cb (GUdevClient *client, const gchar *action,
 	}
 }
 
+/**
+ * batteries_share_parent:
+ * @device: a %UpDevice
+ * @other: another %UpDevice
+ *
+ * Batteries of one device share a parent. One battery reached over two
+ * transports has a power supply each, but under different parents.
+ *
+ * Returns: TRUE if the batteries share one parent, FALSE otherwise.
+ **/
+static gboolean
+batteries_share_parent (UpDevice *device,
+			UpDevice *other)
+{
+	GUdevDevice *native, *other_native;
+	g_autoptr(GUdevDevice) parent = NULL;
+	g_autoptr(GUdevDevice) other_parent = NULL;
+
+	if (!UP_IS_DEVICE_SUPPLY (device) || !UP_IS_DEVICE_SUPPLY (other))
+		return FALSE;
+
+	native = G_UDEV_DEVICE (up_device_get_native (device));
+	other_native = G_UDEV_DEVICE (up_device_get_native (other));
+	if (native == NULL || other_native == NULL)
+		return FALSE;
+
+	parent = g_udev_device_get_parent (native);
+	other_parent = g_udev_device_get_parent (other_native);
+	if (parent == NULL || other_parent == NULL)
+		return FALSE;
+
+	return g_strcmp0 (g_udev_device_get_sysfs_path (parent),
+			  g_udev_device_get_sysfs_path (other_parent)) == 0;
+}
+
 static UpDevice *
 find_duplicate_device (UpBackend *backend,
 		       UpDevice  *device)
@@ -137,6 +172,8 @@ find_duplicate_device (UpBackend *backend,
 
 		d = UP_DEVICE (g_ptr_array_index (array, i));
 		if (d == device)
+			continue;
+		if (batteries_share_parent (device, d))
 			continue;
 		g_object_get (G_OBJECT (d), "serial", &s, NULL);
 		if (s && g_ascii_strcasecmp (s, serial) == 0) {

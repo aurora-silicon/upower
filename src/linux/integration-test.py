@@ -4084,6 +4084,64 @@ class Tests(dbusmock.DBusTestCase):
 
         self.stop_daemon()
 
+    def test_several_batteries_one_device(self):
+        """A device with one battery per part keeps all of them"""
+
+        dev = self.testbed.add_device(
+            "usb", "/devices/pci0000:00/0000:00:14.0/usb3/3-3", None, [], []
+        )
+
+        parent = dev
+        self.testbed.add_device(
+            "input",
+            "/devices/pci0000:00/0000:00:14.0/usb3/3-3/3-3:1.2/0003:1D50:615E.0010/input/input22",
+            parent,
+            ["name", "Split Keyboard", "uniq", "07981C2CF14C4119"],
+            ["ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1"],
+        )
+
+        # The second part has not reported yet, so its state is unknown.
+        for report_id, status, capacity in (
+            ("5", "Discharging", "51"),
+            ("6", "Unknown", "25"),
+        ):
+            self.testbed.add_device(
+                "power_supply",
+                "/devices/pci0000:00/0000:00:14.0/usb3/3-3/3-3:1.2/0003:1D50:615E.0010"
+                "/power_supply/hid-07981C2CF14C4119-battery-" + report_id,
+                parent,
+                [
+                    "type",
+                    "Battery",
+                    "scope",
+                    "Device",
+                    "present",
+                    "1",
+                    "status",
+                    status,
+                    "capacity",
+                    capacity,
+                    "model_name",
+                    "Split Keyboard",
+                ],
+                [],
+            )
+
+        self.start_daemon()
+
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+
+        percentages = set()
+        for dev_up in devs:
+            self.assertEqual(
+                self.get_dbus_dev_property(dev_up, "Serial"), "07981C2CF14C4119"
+            )
+            percentages.add(self.get_dbus_dev_property(dev_up, "Percentage"))
+        self.assertEqual(percentages, {51.0, 25.0})
+
+        self.stop_daemon()
+
     def test_bluetooth_mouse_reconnect(self):
         """bluetooth mouse powerdown/reconnect"""
 
