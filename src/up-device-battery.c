@@ -312,12 +312,18 @@ up_device_battery_report (UpDeviceBattery *self,
 
 	/* QUIRK: Increase energy_full if energy.cur is higher */
 	if (values->energy.cur > priv->energy_full) {
-		priv->energy_full = values->energy.cur;
-		g_object_set (self,
-		              /* How healthy the battery is (clamp to 100% if it can hold more charge than expected) */
-		              "capacity", up_device_battery_calc_capacity (priv->energy_full, priv->energy_design),
-		              "energy-full", priv->energy_full,
-		              NULL);
+		/* Ignore impossible capacity spikes (e.g. due to EC handshake glitches/unscaled values) */
+		if (priv->energy_design > 0 && values->energy.cur > priv->energy_design) {
+			g_debug ("Ignored impossible battery capacity spike: %f Wh (design: %f Wh)",
+			         values->energy.cur, priv->energy_design);
+		} else {
+			priv->energy_full = values->energy.cur;
+			g_object_set (self,
+				      /* How healthy the battery is (clamp to 100% if it can hold more charge than expected) */
+				      "capacity", up_device_battery_calc_capacity (priv->energy_full, priv->energy_design),
+				      "energy-full", priv->energy_full,
+				      NULL);
+		}
 	}
 
 	/* Infer percentage if unknown */
