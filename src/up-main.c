@@ -35,12 +35,10 @@
 #include <locale.h>
 
 #include "up-daemon.h"
-#include "up-kbd-backlight.h"
 
 #define DEVKIT_POWER_SERVICE_NAME "org.freedesktop.UPower"
 
 typedef struct UpState {
-	UpKbdBacklight *kbd_backlight;
 	UpDaemon *daemon;
 	GMainLoop *loop;
 } UpState;
@@ -50,7 +48,6 @@ up_state_free (UpState *state)
 {
 	up_daemon_shutdown (state->daemon);
 
-	g_clear_object (&state->kbd_backlight);
 	g_clear_object (&state->daemon);
 	g_clear_pointer (&state->loop, g_main_loop_unref);
 
@@ -62,7 +59,6 @@ up_state_new (void)
 {
 	UpState *state = g_new0 (UpState, 1);
 
-	state->kbd_backlight = up_kbd_backlight_new ();
 	state->daemon = up_daemon_new ();
 	state->loop = g_main_loop_new (NULL, FALSE);
 
@@ -79,7 +75,6 @@ up_main_bus_acquired (GDBusConnection *connection,
 {
 	UpState *state = user_data;
 
-	up_kbd_backlight_register (state->kbd_backlight, connection);
 	if (!up_daemon_startup (state->daemon, connection)) {
 		g_warning ("Could not startup; bailing out");
 		g_main_loop_quit (state->loop);
