@@ -190,9 +190,8 @@ up_device_kbd_backlight_compute_object_path (UpDeviceKbdBacklight *device)
 	const gchar *native_path;
 	guint i;
 
-	if (priv->native == NULL) {
-		return g_build_filename (UP_DEVICES_KBD_BACKLIGHT_DBUS_PATH, "KbdBacklight", NULL);
-	}
+	if (priv->native == NULL)
+		return g_strdup (UP_DEVICES_KBD_BACKLIGHT_DBUS_PATH);
 
 	native_path = up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device));
 	basename = g_path_get_basename (native_path);
@@ -239,6 +238,7 @@ up_device_kbd_backlight_register (UpDeviceKbdBacklight *device)
 
 	if (g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (device)) != NULL)
 		return FALSE;
+
 	computed_object_path = up_device_kbd_backlight_compute_object_path (device);
 	g_debug ("Exported Keyboard backlight with path %s", computed_object_path);
 	up_device_kbd_backlight_export_skeleton (device, computed_object_path);
@@ -281,8 +281,6 @@ up_device_kbd_backlight_set_property (GObject      *object,
 
 	case PROP_NATIVE:
 		priv->native = g_value_dup_object (value);
-		if (priv->native == NULL)
-			g_warning ("KBD native is NULL");
 		break;
 
 	default:
@@ -310,7 +308,7 @@ up_device_kbd_backlight_initable_init (GInitable     *initable,
 {
 	UpDeviceKbdBacklight *device = UP_DEVICE_KBD_BACKLIGHT (initable);
 	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (device);
-	const gchar *native_path = NULL;
+	const gchar *native_path = "KbdBacklight";
 	UpDeviceKbdBacklightClass *klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (device);
 	int ret;
 
@@ -328,7 +326,6 @@ up_device_kbd_backlight_initable_init (GInitable     *initable,
 			g_debug ("failed to coldplug %s", native_path);
 			g_propagate_error (error, g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
 			                                       "Failed to coldplug %s", native_path));
-
 			return FALSE;
 		}
 	}
@@ -345,7 +342,7 @@ up_device_kbd_backlight_initable_iface_init (GInitableIface *iface)
 }
 
 /**
- * up_kbd_backlight_init:
+ * up_device_kbd_backlight_init:
  **/
 static void
 up_device_kbd_backlight_init (UpDeviceKbdBacklight *kbd_backlight)
@@ -359,7 +356,21 @@ up_device_kbd_backlight_init (UpDeviceKbdBacklight *kbd_backlight)
 }
 
 /**
- * up_kbd_backlight_finalize:
+ * up_device_kbd_backlight_dispose:
+ **/
+static void
+up_device_kbd_backlight_dispose (GObject *object)
+{
+	UpDeviceKbdBacklight *kbd_backlight = UP_DEVICE_KBD_BACKLIGHT (object);
+	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (kbd_backlight);
+
+	g_clear_object (&priv->daemon);
+
+	G_OBJECT_CLASS (up_device_kbd_backlight_parent_class)->dispose (object);
+}
+
+/**
+ * up_device_kbd_backlight_finalize:
  **/
 static void
 up_device_kbd_backlight_finalize (GObject *object)
@@ -370,7 +381,6 @@ up_device_kbd_backlight_finalize (GObject *object)
 	g_return_if_fail (object != NULL);
 	g_return_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (object));
 
-	g_clear_object (&priv->daemon);
 	g_clear_object (&priv->native);
 
 	G_OBJECT_CLASS (up_device_kbd_backlight_parent_class)->finalize (object);
@@ -381,6 +391,7 @@ up_device_kbd_backlight_class_init (UpDeviceKbdBacklightClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+	object_class->dispose = up_device_kbd_backlight_dispose;
 	object_class->finalize = up_device_kbd_backlight_finalize;
 
 	object_class->set_property = up_device_kbd_backlight_set_property;
@@ -404,7 +415,7 @@ up_device_kbd_backlight_class_init (UpDeviceKbdBacklightClass *klass)
 }
 
 /**
- * up_kbd_backlight_new:
+ * up_device_kbd_backlight_new:
  **/
 UpDeviceKbdBacklight *
 up_device_kbd_backlight_new (UpDaemon *daemon, GObject *native)

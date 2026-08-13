@@ -63,6 +63,9 @@ struct UpDaemonPrivate
 	gint64			 time_to_empty;
 	gint64			 time_to_full;
 
+	/* Composite keyboard backlight properties */
+	UpDeviceKbdBacklight	*display_kbd_backlight_device;
+
 	gboolean		 charge_threshold_enabled;
 	gboolean		 state_all_discharging;
 
@@ -580,6 +583,7 @@ up_daemon_register_power_daemon (UpDaemon *daemon,
 
 	/* Register the display device */
 	g_initable_init (G_INITABLE (daemon->priv->display_device), NULL, NULL);
+	g_initable_init (G_INITABLE (daemon->priv->display_kbd_backlight_device), NULL, NULL);
 
 	return TRUE;
 }
@@ -639,6 +643,7 @@ up_daemon_shutdown (UpDaemon *daemon)
 
 	/* release UpDaemon reference */
 	g_object_run_dispose (G_OBJECT (daemon->priv->display_device));
+	g_object_run_dispose (G_OBJECT (daemon->priv->display_kbd_backlight_device));
 }
 
 /**
@@ -1235,6 +1240,7 @@ up_daemon_init (UpDaemon *daemon)
 	daemon->priv->kbd_backlight_devices = up_device_list_new ();
 	daemon->priv->display_device = up_device_new (daemon, NULL);
 	daemon->priv->poll_source = g_source_new (&poll_source_funcs, sizeof (GSource));
+	daemon->priv->display_kbd_backlight_device = up_device_kbd_backlight_new (daemon, NULL);
 
 	g_source_set_callback (daemon->priv->poll_source, NULL, daemon, NULL);
 	g_source_set_name (daemon->priv->poll_source, "up-device-poll");
@@ -1319,6 +1325,7 @@ up_daemon_finalize (GObject *object)
 	g_clear_pointer (&daemon->priv->poll_source, g_source_destroy);
 
 	g_object_unref (priv->power_devices);
+	g_object_unref (priv->display_kbd_backlight_device);
 	g_object_unref (priv->kbd_backlight_devices);
 	g_object_unref (priv->display_device);
 	g_object_unref (priv->polkit);
