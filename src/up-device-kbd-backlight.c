@@ -57,12 +57,16 @@ enum {
 	N_PROPS
 };
 
-/* Upower keeps the legacy keyboard backlight DBus API (/org/freedesktop/UPower/KbdBacklight/)
- * for backward compatibility.
- * The new API path is based on the legacy one and the suffix is the name of the keyboard
- * backlight device. For example, the path of the keyboard backlight device
- * "tpacpiookbd_backlight" is
- * "/org/freedesktop/UPower/KbdBacklight/tpacpiookbd_backlight".*/
+
+/* Composite Keyboard Backlight D-Bus API (/org/freedesktop/UPower/KbdBacklight/)
+ *
+ * To maintain backward compatibility, the composite keyboard backlight API extends
+ * the legacy interface. The new functions provide normalized brightness values and
+ * allow controlling all registered keyboard backlight devices through a single API call.
+ *
+ * Individual device paths append the device name as a suffix to the base path.
+ * For example, the path for the "tpacpi::kbd_backlight" device is:
+ * /org/freedesktop/UPower/KbdBacklight/tpacpiookbd_backlight */
 #define UP_DEVICES_KBD_BACKLIGHT_DBUS_PATH "/org/freedesktop/UPower/KbdBacklight"
 static GParamSpec *properties[N_PROPS];
 
@@ -87,14 +91,21 @@ up_kbd_backlight_get_brightness (UpExportedKbdBacklight *skeleton,
 				 GDBusMethodInvocation *invocation,
 				 UpDeviceKbdBacklight *kbd_backlight)
 {
+	UpDeviceKbdBacklightPrivate *priv;
 	UpDeviceKbdBacklightClass *klass;
-	gint brightness = 0;
+	gint brightness = -1;
 
 	g_return_val_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (kbd_backlight), FALSE);
 
-	klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
+	priv = up_device_kbd_backlight_get_instance_private (kbd_backlight);
 
-	brightness = klass->get_brightness (kbd_backlight);
+	if (priv->native == NULL) {
+		brightness = priv->brightness;
+	} else {
+		klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
+		if (klass->get_brightness != NULL)
+			brightness = klass->get_brightness (kbd_backlight);
+	}
 
 	if (brightness >= 0) {
 		up_exported_kbd_backlight_complete_get_brightness (skeleton, invocation,
@@ -108,7 +119,6 @@ up_kbd_backlight_get_brightness (UpExportedKbdBacklight *skeleton,
 	return TRUE;
 }
 
-
 /**
  * up_kbd_backlight_get_max_brightness:
  *
@@ -119,19 +129,26 @@ up_kbd_backlight_get_max_brightness (UpExportedKbdBacklight *skeleton,
 				     GDBusMethodInvocation *invocation,
 				     UpDeviceKbdBacklight *kbd_backlight)
 {
+	UpDeviceKbdBacklightPrivate *priv;
 	UpDeviceKbdBacklightClass *klass;
-	gint brightness = -1;
+	gint max_brightness = -1;
 
 	g_return_val_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (kbd_backlight), FALSE);
 
-	klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
+	priv = up_device_kbd_backlight_get_instance_private (kbd_backlight);
 
-	if (klass->get_max_brightness != NULL)
-		brightness = klass->get_max_brightness (kbd_backlight);
+	if (priv->native == NULL) {
+		max_brightness = priv->max_brightness;
+	} else {
+		klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
 
-	if (brightness >= 0) {
+		if (klass->get_max_brightness != NULL)
+			max_brightness = klass->get_max_brightness (kbd_backlight);
+	}
+
+	if (max_brightness >= 0) {
 		up_exported_kbd_backlight_complete_get_max_brightness (skeleton, invocation,
-								       brightness);
+								       max_brightness);
 	} else {
 		g_dbus_method_invocation_return_error (invocation,
 						       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
@@ -141,11 +158,68 @@ up_kbd_backlight_get_max_brightness (UpExportedKbdBacklight *skeleton,
 	return TRUE;
 }
 
+/**
+ * up_device_kbd_backlight_composite_set_brightness:
+ *
+ * Sets the brightness for the composite kbd backlight device.
+ *
+ * Returns: %TRUE on success.
+ **/
+static gboolean
+up_device_kbd_backlight_composite_set_brightness (UpDeviceKbdBacklight *device, gint value)
+{
+	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (device);
+	GPtrArray *array;
+	gboolean any_success = FALSE;
+
+	if (priv->kbd_backlight_devices == NULL)
+		return FALSE;
+
+	if (priv->max_brightness <= 0)
+		return FALSE;
+
+	value = CLAMP (value, 0, priv->max_brightness);
+
+	array = up_device_list_get_array (priv->kbd_backlight_devices);
+	for (guint i = 0; i < array->len; i++) {
+		UpDeviceKbdBacklight *kbd_device;
+		UpDeviceKbdBacklightClass *klass;
+		gint max_brightness;
+		gdouble ratio;
+		gint scaled;
+
+		kbd_device = UP_DEVICE_KBD_BACKLIGHT (g_ptr_array_index (array, i));
+
+		klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_device);
+		g_object_get (kbd_device, "max-brightness", &max_brightness, NULL);
+
+		if (klass->set_brightness != NULL && max_brightness > 0) {
+			ratio = (gdouble) max_brightness / priv->max_brightness;
+			scaled = CLAMP ((gint)(ratio * value), 0, max_brightness);
+
+			if (klass->set_brightness (kbd_device, scaled)) {
+				any_success = TRUE;
+				g_object_set (kbd_device, "brightness", scaled, NULL);
+			}
+		}
+	}
+
+	g_ptr_array_unref (array);
+
+	if (!any_success)
+		return FALSE;
+
+	g_object_set (device, "brightness", value, NULL);
+
+	return TRUE;
+}
 
 /**
  * up_kbd_backlight_set_brightness:
  *
  * Sets the kbd backlight LED brightness.
+ *
+ * Returns: %TRUE on success.
  **/
 static gboolean
 up_kbd_backlight_set_brightness (UpExportedKbdBacklight *skeleton,
@@ -153,24 +227,48 @@ up_kbd_backlight_set_brightness (UpExportedKbdBacklight *skeleton,
 				 gint value,
 				 UpDeviceKbdBacklight *kbd_backlight)
 {
+	UpDeviceKbdBacklightPrivate *priv;
 	UpDeviceKbdBacklightClass *klass;
 	gboolean ret = FALSE;
 
 	g_return_val_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (kbd_backlight), FALSE);
 
-	klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
+	priv = up_device_kbd_backlight_get_instance_private (kbd_backlight);
 
-	if (klass->set_brightness == NULL) {
+	if (value < 0) {
 		g_dbus_method_invocation_return_error (invocation,
 						       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
-						       "setting brightness is unsupported");
+						       "brightness value must be non-negative");
 		return TRUE;
 	}
-	ret = klass->set_brightness (kbd_backlight, value);
+
+	if (priv->native == NULL) {
+		/* It is a composite kbd backlight device */
+		ret = up_device_kbd_backlight_composite_set_brightness (kbd_backlight, value);
+	} else {
+		klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (kbd_backlight);
+
+		if (klass->set_brightness == NULL) {
+			g_dbus_method_invocation_return_error (invocation,
+							       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
+							       "setting brightness is unsupported");
+			return TRUE;
+		}
+		if (priv->max_brightness < 0) {
+			g_dbus_method_invocation_return_error (invocation,
+							       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
+							       "max brightness not yet available");
+			return TRUE;
+		}
+		value = CLAMP (value, 0, priv->max_brightness);
+		ret = klass->set_brightness (kbd_backlight, value);
+		if (ret)
+			g_object_set (kbd_backlight, "brightness", value, NULL);
+	}
 
 	if (ret) {
 		up_exported_kbd_backlight_complete_set_brightness (skeleton, invocation);
-		up_device_kbd_backlight_emit_change (kbd_backlight, value, "external");
+		up_device_kbd_backlight_emit_change (kbd_backlight, priv->brightness, "external");
 	} else {
 		g_dbus_method_invocation_return_error (invocation,
 						       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
