@@ -83,6 +83,8 @@ UpDeviceLevel	 up_daemon_compute_warning_level(UpDaemon		*daemon,
 						 gboolean		 power_supply,
 						 gdouble		 percentage,
 						 gint64			 time_to_empty);
+gboolean	 up_daemon_kbd_backlight_composite_update (UpDaemon	*daemon,
+							   gboolean composite_signal);
 const gchar	*up_daemon_get_charge_icon	(UpDaemon		*daemon,
 						 gdouble		 percentage,
 						 UpDeviceLevel		 battery_level,

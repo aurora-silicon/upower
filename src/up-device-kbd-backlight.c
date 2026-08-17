@@ -239,6 +239,43 @@ up_device_kbd_backlight_export_skeleton (UpDeviceKbdBacklight *device,
 	}
 }
 
+/**
+ * up_device_kbd_backlight_report:
+ * @self: keyboard backlight device that changed
+ * @max_brightness: new maximum brightness value from hardware
+ * @brightness: new current brightness value from hardware
+ * @composite_signal: whether to emit a brightness-changed signal on the composite device
+ *
+ * Updates the stored brightness properties for a hardware keyboard backlight
+ * device and triggers recomputation of the composite keyboard backlight.
+ * Ignored when called on the composite device itself (native == NULL).
+ **/
+void
+up_device_kbd_backlight_report (UpDeviceKbdBacklight *self, gint max_brightness, gint brightness, gboolean composite_signal)
+{
+	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (self);
+	gboolean changed = FALSE;
+
+	g_return_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (self));
+
+	/* Don't report for a composite kbd backlight device. */
+	if (priv->native == NULL)
+		return;
+
+	if (priv->max_brightness != max_brightness) {
+		g_object_set (self, "max-brightness", max_brightness, NULL);
+		changed = TRUE;
+	}
+
+	if (priv->brightness != brightness) {
+		g_object_set (self, "brightness", brightness, NULL);
+		changed = TRUE;
+	}
+
+	if (changed && priv->daemon != NULL)
+		up_daemon_kbd_backlight_composite_update (priv->daemon, composite_signal);
+}
+
 gboolean
 up_device_kbd_backlight_register (UpDeviceKbdBacklight *device)
 {

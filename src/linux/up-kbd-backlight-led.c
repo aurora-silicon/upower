@@ -40,7 +40,7 @@ static void     up_kbd_backlight_led_finalize   (GObject	*object);
 struct UpKbdBacklightLedPrivate
 {
 	gint			 max_brightness;
-	guint			 brightness;
+	gint			 brightness;
 
 	gint			 fd_hw_changed;
 	GIOChannel		*channel_hw_changed;
@@ -210,8 +210,10 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	if (brightness < 0)
 		return FALSE;
 
-	if (brightness >= 0)
+	if (brightness >= 0) {
 		up_device_kbd_backlight_emit_change (kbd_backlight, brightness, "internal");
+		up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, brightness, TRUE);
+	}
 
 	return TRUE;
 }
@@ -228,6 +230,7 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 	UpKbdBacklightLedPrivate *priv;
 	GObject *native;
 	g_autofree gchar *filename = NULL;
+	g_autofree gchar *filename_brightness = NULL;
 	g_autofree gchar *path_hw_changed = NULL;
 	const gchar *native_path = NULL;
 
@@ -247,6 +250,9 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 
 	priv->max_brightness = up_kbd_backlight_led_brightness_read (kbd_backlight, filename);
 
+	filename_brightness = g_build_filename (native_path, "brightness", NULL);
+	priv->brightness = up_kbd_backlight_led_brightness_read (kbd_backlight, filename_brightness);
+
 	/* Set up device watcher */
 	path_hw_changed = g_build_filename (native_path, "brightness_hw_changed", NULL);
 	priv->fd_hw_changed = open (path_hw_changed, O_RDONLY);
@@ -255,6 +261,8 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 		g_io_add_watch (priv->channel_hw_changed,
 				G_IO_PRI, up_kbd_backlight_led_event_io, kbd_backlight);
 	}
+
+	up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, priv->brightness, FALSE);
 
 	return TRUE;
 }

@@ -53,6 +53,10 @@ GObject			*up_device_kbd_backlight_get_native		(UpDeviceKbdBacklight	*device);
 UpDeviceKbdBacklight	*up_device_kbd_backlight_new			(UpDaemon		*daemon,
 									 GObject		*native,
 									 UpDeviceList		*device_list);
+void			 up_device_kbd_backlight_report			(UpDeviceKbdBacklight *self,
+									 gint max_brightness,
+									 gint brightness,
+									 gboolean composite_signal);
 gboolean		 up_device_kbd_backlight_register		(UpDeviceKbdBacklight	*device);
 void			 up_device_kbd_backlight_unregister		(UpDeviceKbdBacklight	*device);
 
