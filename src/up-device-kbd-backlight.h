@@ -51,7 +51,8 @@ void			 up_device_kbd_backlight_emit_change		(UpDeviceKbdBacklight *kbd_backligh
 const gchar		*up_device_kbd_backlight_get_object_path	(UpDeviceKbdBacklight	*device);
 GObject			*up_device_kbd_backlight_get_native		(UpDeviceKbdBacklight	*device);
 UpDeviceKbdBacklight	*up_device_kbd_backlight_new			(UpDaemon		*daemon,
-									 GObject		*native);
+									 GObject		*native,
+									 UpDeviceList		*device_list);
 gboolean		 up_device_kbd_backlight_register		(UpDeviceKbdBacklight	*device);
 void			 up_device_kbd_backlight_unregister		(UpDeviceKbdBacklight	*device);
 

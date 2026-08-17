@@ -1240,7 +1240,7 @@ up_daemon_init (UpDaemon *daemon)
 	daemon->priv->kbd_backlight_devices = up_device_list_new ();
 	daemon->priv->display_device = up_device_new (daemon, NULL);
 	daemon->priv->poll_source = g_source_new (&poll_source_funcs, sizeof (GSource));
-	daemon->priv->display_kbd_backlight_device = up_device_kbd_backlight_new (daemon, NULL);
+	daemon->priv->display_kbd_backlight_device = up_device_kbd_backlight_new (daemon, NULL, daemon->priv->kbd_backlight_devices);
 
 	g_source_set_callback (daemon->priv->poll_source, NULL, daemon, NULL);
 	g_source_set_name (daemon->priv->poll_source, "up-device-poll");

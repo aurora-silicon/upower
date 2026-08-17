@@ -25,14 +25,19 @@
 #include <glib/gi18n-lib.h>
 #include <glib-object.h>
 
-#include "up-native.h"
 #include "up-device-kbd-backlight.h"
+#include "up-device-list.h"
+#include "up-native.h"
 #include "up-stats-item.h"
 
 typedef struct
 {
 	UpDaemon	*daemon;
 	GObject		*native;
+	UpDeviceList	*kbd_backlight_devices;
+
+	gint		 max_brightness;
+	gint		 brightness;
 } UpDeviceKbdBacklightPrivate;
 
 static void up_device_kbd_backlight_initable_iface_init (GInitableIface *iface);
@@ -46,6 +51,9 @@ enum {
 	PROP_0,
 	PROP_DAEMON,
 	PROP_NATIVE,
+	PROP_DEVICE_LIST,
+	PROP_MAX_BRIGHTNESS,
+	PROP_BRIGHTNESS,
 	N_PROPS
 };
 
@@ -278,11 +286,19 @@ up_device_kbd_backlight_set_property (GObject      *object,
 	case PROP_DAEMON:
 		priv->daemon = g_value_dup_object (value);
 		break;
-
 	case PROP_NATIVE:
 		priv->native = g_value_dup_object (value);
 		break;
-
+	case PROP_DEVICE_LIST:
+		g_clear_object (&priv->kbd_backlight_devices);
+		priv->kbd_backlight_devices = g_value_dup_object (value);
+		break;
+	case PROP_MAX_BRIGHTNESS:
+		priv->max_brightness = g_value_get_int (value);
+		break;
+	case PROP_BRIGHTNESS:
+		priv->brightness = g_value_get_int (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 	}
@@ -294,8 +310,17 @@ up_device_kbd_backlight_get_property (GObject      *object,
 				      GValue       *value,
 				      GParamSpec   *pspec)
 {
+	UpDeviceKbdBacklight *device = UP_DEVICE_KBD_BACKLIGHT (object);
+	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (device);
+
 	switch (prop_id)
 	{
+	case PROP_MAX_BRIGHTNESS:
+		g_value_set_int (value, priv->max_brightness);
+		break;
+	case PROP_BRIGHTNESS:
+		g_value_set_int (value, priv->brightness);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 	}
@@ -308,8 +333,8 @@ up_device_kbd_backlight_initable_init (GInitable     *initable,
 {
 	UpDeviceKbdBacklight *device = UP_DEVICE_KBD_BACKLIGHT (initable);
 	UpDeviceKbdBacklightPrivate *priv = up_device_kbd_backlight_get_instance_private (device);
-	const gchar *native_path = "KbdBacklight";
 	UpDeviceKbdBacklightClass *klass = UP_DEVICE_KBD_BACKLIGHT_GET_CLASS (device);
+	const gchar *native_path = "KbdBacklight";
 	int ret;
 
 	g_return_val_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (device), FALSE);
@@ -382,6 +407,7 @@ up_device_kbd_backlight_finalize (GObject *object)
 	g_return_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (object));
 
 	g_clear_object (&priv->native);
+	g_clear_object (&priv->kbd_backlight_devices);
 
 	G_OBJECT_CLASS (up_device_kbd_backlight_parent_class)->finalize (object);
 }
@@ -410,6 +436,24 @@ up_device_kbd_backlight_class_init (UpDeviceKbdBacklightClass *klass)
 				     "Native Object",
 				     G_TYPE_OBJECT,
 				     G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+	properties[PROP_DEVICE_LIST] =
+		g_param_spec_object ("device-list",
+				     "DeviceList",
+				     "Device List",
+				     UP_TYPE_DEVICE_LIST,
+				     G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+	properties[PROP_MAX_BRIGHTNESS] =
+		g_param_spec_int ("max-brightness",
+				  "MaxBrightness",
+				  "Max brightness",
+				  -1, G_MAXINT, -1,
+				  G_PARAM_STATIC_STRINGS | G_PARAM_READABLE | G_PARAM_WRITABLE);
+	properties[PROP_BRIGHTNESS] =
+		g_param_spec_int ("brightness",
+				  "Brightness",
+				  "Current brightness",
+				  -1, G_MAXINT, -1,
+				  G_PARAM_STATIC_STRINGS | G_PARAM_READABLE | G_PARAM_WRITABLE);
 
 	g_object_class_install_properties (object_class, N_PROPS, properties);
 }
@@ -418,10 +462,11 @@ up_device_kbd_backlight_class_init (UpDeviceKbdBacklightClass *klass)
  * up_device_kbd_backlight_new:
  **/
 UpDeviceKbdBacklight *
-up_device_kbd_backlight_new (UpDaemon *daemon, GObject *native)
+up_device_kbd_backlight_new (UpDaemon *daemon, GObject *native, UpDeviceList *device_list)
 {
 	return UP_DEVICE_KBD_BACKLIGHT (g_object_new (UP_TYPE_DEVICE_KBD_BACKLIGHT,
 					"daemon", daemon,
 					"native", native,
+					"device-list", device_list,
 					NULL));
 }
