@@ -179,7 +179,7 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	UpDeviceKbdBacklight *kbd_backlight = UP_DEVICE_KBD_BACKLIGHT (data);
 	UpKbdBacklightLed *kbd = UP_KBD_BACKLIGHT_LED (kbd_backlight);
 	UpKbdBacklightLedPrivate *priv = up_kbd_backlight_led_get_instance_private (kbd);
-	gint brightness = 0;
+	gint brightness = -1;
 	gchar buf[16];
 	glong len;
 	gchar *end = NULL;
@@ -204,16 +204,16 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 			brightness = -1;
 			g_warning ("kbd eventio: failed to convert brightness.");
 		}
+	} else {
+		return FALSE;
 	}
 	g_debug ("kbd eventio: brightness: %d", brightness);
 
 	if (brightness < 0)
 		return FALSE;
 
-	if (brightness >= 0) {
-		up_device_kbd_backlight_emit_change (kbd_backlight, brightness, "internal");
-		up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, brightness, TRUE);
-	}
+	up_device_kbd_backlight_emit_change (kbd_backlight, brightness, "internal");
+	up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, brightness, TRUE);
 
 	return TRUE;
 }
