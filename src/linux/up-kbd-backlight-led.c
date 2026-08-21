@@ -319,12 +319,3 @@ up_kbd_backlight_led_init (UpKbdBacklightLed *kbd_backlight)
 {
 	kbd_backlight->priv = up_kbd_backlight_led_get_instance_private (kbd_backlight);
 }
-
-/**
- * up_kbd_backlight_led_new:
- **/
-UpKbdBacklightLed *
-up_kbd_backlight_led_new (void)
-{
-	return g_object_new (UP_TYPE_KBD_BACKLIGHT_LED, NULL);
-}

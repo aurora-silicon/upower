@@ -47,7 +47,6 @@ typedef struct
 	UpDeviceKbdBacklightClass		 parent_class;
 } UpKbdBacklightLedClass;
 
-UpKbdBacklightLed	*up_kbd_backlight_led_new			(void);
 GType		 	 up_kbd_backlight_led_get_type			(void);
 
 G_END_DECLS
