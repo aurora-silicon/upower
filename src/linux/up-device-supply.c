@@ -292,6 +292,21 @@ up_device_supply_refresh_device (UpDeviceSupply *supply,
 	if (g_udev_device_has_sysfs_attr_uncached (native, "present"))
 		is_present = g_udev_device_get_sysfs_attr_as_boolean_uncached (native, "present");
 
+	/* Batteries reached over a wireless link report whether it is up */
+	if (g_udev_device_has_sysfs_attr_uncached (native, "online")) {
+		gboolean is_power_supply;
+
+		g_object_get (device, "power-supply", &is_power_supply, NULL);
+		if (!is_power_supply) {
+			gboolean disconnected_old, disconnected_new;
+
+			g_object_get (device, "disconnected", &disconnected_old, NULL);
+			disconnected_new = !g_udev_device_get_sysfs_attr_as_boolean_uncached (native, "online");
+			if (disconnected_old != disconnected_new)
+				g_object_set (device, "disconnected", disconnected_new, NULL);
+		}
+	}
+
 	/* get a precise percentage */
 	percentage = g_udev_device_get_sysfs_attr_as_double_uncached (native, "capacity");
 	if (percentage == 0.0f)

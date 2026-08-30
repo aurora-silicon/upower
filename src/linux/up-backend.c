@@ -485,6 +485,14 @@ udev_device_added_cb (UpBackend *backend, GObject *device)
 	g_signal_connect (device, "notify::disconnected",
 			  G_CALLBACK (up_device_disconnected_cb), backend);
 	if (UP_IS_DEVICE (device)) {
+		gboolean disconnected;
+
+		g_object_get (device, "disconnected", &disconnected, NULL);
+		if (disconnected) {
+			g_debug ("Device is disconnected, not showing it yet");
+			up_device_unregister (UP_DEVICE (device));
+			return;
+		}
 		if (update_added_duplicate_device (backend, UP_DEVICE (device)))
 			g_signal_emit (backend, signals[SIGNAL_DEVICE_ADDED], 0, device);
 	} else if (UP_IS_DEVICE_KBD_BACKLIGHT (device)) {
