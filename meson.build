@@ -139,7 +139,9 @@ subdir('src')
 subdir('tools')
 subdir('doc')
 subdir('data/zsh-completion')
-subdir('policy')
+if polkit.found()
+    subdir('policy')
+endif
 
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(

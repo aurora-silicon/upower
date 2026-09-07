@@ -1,10 +1,10 @@
-install_data(
-  'org.freedesktop.upower.rules',
-  install_tag: 'runtime',
-  install_dir: join_paths(datadir, 'polkit-1', 'rules.d'),
-)
-
 if polkit.found()
+  install_data(
+    'org.freedesktop.upower.rules',
+    install_tag: 'runtime',
+    install_dir: join_paths(datadir, 'polkit-1', 'rules.d'),
+  )
+
   #newer polkit has the ITS rules included
   if polkit.version().version_compare('>0.113')
     i18n.merge_file(
