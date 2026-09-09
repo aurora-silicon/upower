@@ -5249,6 +5249,61 @@ class Tests(dbusmock.DBusTestCase):
         time.sleep(0.5)
         return self.proxy.EnumerateDevices()
 
+    def test_bluetooth_daemon_restart(self):
+        """All Bluetooth batteries disappear and return across BlueZ restart"""
+
+        def add_devices():
+            self.start_bluez()
+            self.bluez_obj.AddAdapter("hci0", "my-computer")
+            for suffix in ("01", "02", "03"):
+                path = self.bluez_obj.AddDevice(
+                    "hci0", "11:22:33:44:AA:" + suffix, "Mouse " + suffix
+                )
+                device = self.dbus_con.get_object("org.bluez", path)
+                device.AddProperties(
+                    BATTERY_IFACE, {"Percentage": dbus.Byte(70, variant_level=1)}
+                )
+
+        add_devices()
+        self.start_daemon()
+        self.assertEventually(lambda: len(self.proxy.EnumerateDevices()), value=3)
+        original_paths = set(self.proxy.EnumerateDevices())
+
+        # Drop/reacquire the name with an initialized mock. Starting another
+        # mock process while UPower watches races the template installation.
+        owner = self.dbus_con.get_name_owner("org.bluez")
+        mock = dbus.Interface(self.dbus_con.get_object(owner, "/"), dbusmock.MOCK_IFACE)
+        mock.AddMethods(
+            dbusmock.MOCK_IFACE,
+            [
+                (
+                    "ReleaseName",
+                    "",
+                    "",
+                    'self.bus_name.get_bus().release_name("org.bluez")',
+                ),
+                (
+                    "AcquireName",
+                    "",
+                    "",
+                    'self.bus_name.get_bus().request_name("org.bluez")',
+                ),
+            ],
+        )
+        mock.ReleaseName()
+        self.assertEventually(lambda: list(self.proxy.EnumerateDevices()), value=[])
+        for path in original_paths:
+            with self.assertRaises(GLib.Error):
+                self.get_dbus_dev_property(path, "Percentage")
+
+        mock.AcquireName()
+        self.assertEventually(
+            lambda: set(self.proxy.EnumerateDevices()), value=original_paths
+        )
+        for path in original_paths:
+            self.assertEqual(self.get_dbus_dev_property(path, "Percentage"), 70.0)
+        self.stop_daemon()
+
     def test_bluetooth_le_mouse(self):
         """Bluetooth LE mouse"""
 
