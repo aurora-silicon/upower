@@ -23,6 +23,7 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -180,6 +181,7 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	UpKbdBacklightLed *kbd = UP_KBD_BACKLIGHT_LED (kbd_backlight);
 	UpKbdBacklightLedPrivate *priv = up_kbd_backlight_led_get_instance_private (kbd);
 	gint brightness = -1;
+	gint errsv = 0;
 	gchar buf[16];
 	glong len;
 	gchar *end = NULL;
@@ -191,9 +193,21 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 		return FALSE;
 
 	lseek (priv->fd_hw_changed, 0, SEEK_SET);
-	len = read (priv->fd_hw_changed, buf, G_N_ELEMENTS (buf) - 1);
 
-	if (len > 0) {
+	errno = 0;
+	len = read (priv->fd_hw_changed, buf, G_N_ELEMENTS (buf) - 1);
+	errsv = errno;
+
+	if (len == 0) {
+		return TRUE;
+	} else if (len < 0) {
+		if (errsv == EINTR || errsv == ENODATA) {
+			return TRUE;
+		} else {
+			g_warning ("kbd eventio: failed to read brightness. %s", g_strerror (errsv));
+			return FALSE;
+		}
+	} else {
 		buf[len] = '\0';
 		g_strstrip (buf);
 		brightness = g_ascii_strtoll (buf, &end, 10);
@@ -204,8 +218,6 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 			brightness = -1;
 			g_warning ("kbd eventio: failed to convert brightness.");
 		}
-	} else {
-		return FALSE;
 	}
 	g_debug ("kbd eventio: brightness: %d", brightness);
 
@@ -255,7 +267,7 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 
 	/* Set up device watcher */
 	path_hw_changed = g_build_filename (native_path, "brightness_hw_changed", NULL);
-	priv->fd_hw_changed = open (path_hw_changed, O_RDONLY);
+	priv->fd_hw_changed = g_open (path_hw_changed, O_RDONLY);
 	if (priv->fd_hw_changed >= 0) {
 		priv->channel_hw_changed = g_io_channel_unix_new (priv->fd_hw_changed);
 		g_io_add_watch (priv->channel_hw_changed,
