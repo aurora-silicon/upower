@@ -103,8 +103,6 @@ cd contrib
   git commit -a --author "Joe Coder <joe@coder.org>"
   ```
 
-- "Signed-off-by:" tags should be included" in the commit message.
-
 ## Coding Style
 
 - Please follow the coding style already used.

@@ -145,20 +145,6 @@ container_debian_build:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     FDO_DISTRIBUTION_PACKAGES: $DEBIAN_DEPENDENCIES $DEBIAN_EXTRA_DEPENDENCIES
 
-verify_signoff:
-  extends:
-    - .fdo.ci-fairy
-  stage: pre-commit
-  allow_failure: true
-  script:
-    - ci-fairy -vv check-commits --signed-off-by --textwidth 100 --junit-xml=results.xml
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  variables:
-    GIT_DEPTH: 100
-  artifacts:
-    reports:
-      junit: results.xml
 
 pre_commit:
   extends:
