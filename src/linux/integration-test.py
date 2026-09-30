@@ -2734,6 +2734,54 @@ class Tests(dbusmock.DBusTestCase):
         with open("/sys/class/power_supply/BAT0/charge_control_end_threshold") as fp:
             self.assertEqual(fp.read(), "100")
 
+    def test_battery_charge_limit_live_sysfs_value(self):
+        """charge_control_end_threshold live value overrides the hwdb CHARGE_LIMIT default"""
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "85",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT0", "CHARGE_LIMIT", "75,80"
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 1)
+        bat0_up = devs[0]
+
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdSupported"), True
+        )
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeStartThreshold"), 75
+        )
+        self.assertEqual(self.get_dbus_dev_property(bat0_up, "ChargeEndThreshold"), 85)
+
+        self.stop_daemon()
+
     def test_battery_charge_limit_supported_polkit_not_allowed(self):
         """Battery with charge_control_start/end_threshold supported"""
 
