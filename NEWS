@@ -1,3 +1,12 @@
+Version 1.91.5
+--------------
+Released: 2026-10-05
+
+- Fix: Prefer live sysfs threshold values over hwdb CHARGE_LIMIT (!346, #350)
+- Fix: Keep keyboard backlight event IO active on ENODATA/EINTR (!347, #358)
+- Fix: Hide device batteries that report being offline (!345)
+- Fix: Remove all BlueZ devices when the service vanishes (!343)
+
 Version 1.91.4
 --------------
 Released: 2026-09-10
