@@ -632,7 +632,6 @@ up_daemon_register_power_daemon (UpDaemon *daemon,
 
 	/* Register the display device */
 	g_initable_init (G_INITABLE (daemon->priv->display_device), NULL, NULL);
-	g_initable_init (G_INITABLE (daemon->priv->display_kbd_backlight_device), NULL, NULL);
 
 	return TRUE;
 }
@@ -1181,6 +1180,12 @@ up_daemon_device_added_cb (UpBackend *backend, GObject *device, UpDaemon *daemon
 				 up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device)));
 			return;
 		}
+
+		/* Expose the composite display keyboard backlight device once the
+		 * first real keyboard backlight device appears */
+		if (up_device_list_get_length (priv->kbd_backlight_devices) == 0)
+			up_device_kbd_backlight_register (priv->display_kbd_backlight_device);
+
 		up_device_list_insert (priv->kbd_backlight_devices, G_OBJECT (device));
 		up_daemon_kbd_backlight_composite_update (daemon, FALSE);
 		up_exported_daemon_emit_device_added (UP_EXPORTED_DAEMON (daemon), object_path);
@@ -1230,7 +1235,12 @@ up_daemon_device_removed_cb (UpBackend *backend, GObject *device, UpDaemon *daem
 	/* Unregister keyboard backlight dbus path */
 	if (UP_IS_DEVICE_KBD_BACKLIGHT (device)) {
 		up_device_kbd_backlight_unregister (UP_DEVICE_KBD_BACKLIGHT (device));
-		up_daemon_kbd_backlight_composite_update (daemon, TRUE);
+
+		/* Unregister the display keyboard backlight device if no other keyboard backlight devices are present */
+		if (up_device_list_get_length (daemon->priv->kbd_backlight_devices) == 0)
+			up_device_kbd_backlight_unregister (daemon->priv->display_kbd_backlight_device);
+		else
+			up_daemon_kbd_backlight_composite_update (daemon, TRUE);
 	}
 
 	/* In case a battery was removed */
