@@ -65,6 +65,8 @@ typedef struct {
 	gdouble voltage;
 	gdouble temperature;
 	gchar *capacity_level;
+	gint64 kernel_time_to_empty;
+	gint64 kernel_time_to_full;
 } UpBatteryValues;
 
 typedef struct {

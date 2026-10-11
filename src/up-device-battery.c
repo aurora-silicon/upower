@@ -395,6 +395,12 @@ up_device_battery_report (UpDeviceBattery *self,
 	if (values->state == UP_DEVICE_STATE_PENDING_CHARGE && values->percentage >= UP_FULLY_CHARGED_THRESHOLD)
 		values->state = UP_DEVICE_STATE_FULLY_CHARGED;
 
+	/* Kernel estimates remain useful when instantaneous power is unavailable. */
+	if (values->state == UP_DEVICE_STATE_DISCHARGING && values->kernel_time_to_empty > 0)
+		time_to_empty = values->kernel_time_to_empty;
+	if (values->state == UP_DEVICE_STATE_CHARGING && values->kernel_time_to_full > 0)
+		time_to_full = values->kernel_time_to_full;
+
 	/* Set the main properties (setting "update-time" last) */
 	g_object_set (self,
 		      "energy", values->energy.cur,
