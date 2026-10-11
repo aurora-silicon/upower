@@ -2907,6 +2907,61 @@ class Tests(dbusmock.DBusTestCase):
 
         self.stop_daemon()
 
+    def add_kernel_time_battery(self, name="macsmc-battery", status="Discharging",
+                                empty="3600", full="0", power="0"):
+        attrs = ["type", "Battery", "present", "1", "model_name", "synthetic",
+                 "status", status, "energy_full", "40000000", "energy_full_design", "40000000",
+                 "energy_now", "32000000", "voltage_now", "12000000", "capacity", "80",
+                 "power_now", power, "current_now", "0"]
+        if empty is not None:
+            attrs += ["time_to_empty_now", empty]
+        if full is not None:
+            attrs += ["time_to_full_now", full]
+        self.testbed.add_device("power_supply", name, None, attrs, [])
+        self.start_daemon()
+        devices = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devices), 1)
+        return devices[0]
+
+    def test_macsmc_kernel_time_at_zero_rate(self):
+        device = self.add_kernel_time_battery()
+        self.assertEqual(self.get_dbus_dev_property(device, "State"), UP_DEVICE_STATE_DISCHARGING)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
+
+    def test_macsmc_kernel_time_charging(self):
+        device = self.add_kernel_time_battery(status="Charging", empty="3600", full="1800")
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 1800)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+
+    def test_macsmc_kernel_time_invalid_falls_back(self):
+        device = self.add_kernel_time_battery(empty="not-a-number", power="2000000")
+        self.assertGreater(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+
+    def test_macsmc_kernel_time_missing_falls_back(self):
+        device = self.add_kernel_time_battery(empty=None, full=None, power="2000000")
+        self.assertGreater(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+
+    def test_macsmc_kernel_time_nonpositive_and_overflow(self):
+        device = self.add_kernel_time_battery(empty="3600")
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
+        path = "/sys/class/power_supply/macsmc-battery"
+        for value in ("0", "-1", "60garbage", "9223372036854775808"):
+            with self.subTest(value=value):
+                self.testbed.set_attribute(path, "time_to_empty_now", value)
+                self.testbed.uevent(path, "change")
+                time.sleep(0.1)
+                self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+
+    def test_other_supply_ignores_kernel_time(self):
+        device = self.add_kernel_time_battery(name="BAT0")
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+
+    def test_macsmc_kernel_time_fully_charged(self):
+        device = self.add_kernel_time_battery(status="Full", empty="3600", full="1800")
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 0)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
+
     def test_battery_zero_power_draw(self):
         """Battery with zero power draw, e.g. in a dual-battery system"""
 
