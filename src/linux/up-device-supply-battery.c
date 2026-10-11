@@ -390,6 +390,18 @@ up_device_supply_battery_is_charge_threshold_by_charge_type (UpDevice *device) {
 	return FALSE;
 }
 
+static gint64
+up_device_supply_battery_read_kernel_time (GUdevDevice *native, const gchar *attribute)
+{
+	g_autofree gchar *text = get_sysfs_attr_uncached (native, attribute);
+	gint64 seconds;
+
+	if (!text || !g_ascii_string_to_signed (g_strstrip (text), 10, 1, G_MAXINT64, &seconds, NULL))
+		return 0;
+
+	return seconds;
+}
+
 static gboolean
 up_device_supply_battery_refresh (UpDevice *device,
 				  UpRefreshReason reason)
@@ -542,6 +554,11 @@ up_device_supply_battery_refresh (UpDevice *device,
 	if (values.state != UP_DEVICE_STATE_FULLY_CHARGED &&
 	    g_udev_device_get_sysfs_attr_as_double_uncached (native, "current_now") < 0.0)
 		values.state = UP_DEVICE_STATE_DISCHARGING;
+
+	if (g_strcmp0 (g_udev_device_get_name (native), "macsmc-battery") == 0) {
+		values.kernel_time_to_empty = up_device_supply_battery_read_kernel_time (native, "time_to_empty_now");
+		values.kernel_time_to_full = up_device_supply_battery_read_kernel_time (native, "time_to_full_now");
+	}
 
 	values.temperature = g_udev_device_get_sysfs_attr_as_double_uncached (native, "temp") / 10.0;
 
