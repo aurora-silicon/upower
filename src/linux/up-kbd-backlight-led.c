@@ -45,6 +45,7 @@ struct UpKbdBacklightLedPrivate
 
 	gint			 fd_hw_changed;
 	GIOChannel		*channel_hw_changed;
+	guint			 watch_id;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (UpKbdBacklightLed, up_kbd_backlight_led, UP_TYPE_DEVICE_KBD_BACKLIGHT)
@@ -187,10 +188,10 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	gchar *end = NULL;
 
 	if (priv->fd_hw_changed < 0)
-		return FALSE;
+		goto remove_watch;
 
-	if (!(condition & G_IO_PRI))
-		return FALSE;
+	if ((condition & (G_IO_HUP | G_IO_NVAL)) || !(condition & G_IO_PRI))
+		goto remove_watch;
 
 	lseek (priv->fd_hw_changed, 0, SEEK_SET);
 
@@ -199,13 +200,13 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	errsv = errno;
 
 	if (len == 0) {
-		return TRUE;
+		return G_SOURCE_CONTINUE;
 	} else if (len < 0) {
 		if (errsv == EINTR || errsv == ENODATA) {
-			return TRUE;
+			return G_SOURCE_CONTINUE;
 		} else {
 			g_warning ("kbd eventio: failed to read brightness. %s", g_strerror (errsv));
-			return FALSE;
+			goto remove_watch;
 		}
 	} else {
 		buf[len] = '\0';
@@ -222,12 +223,16 @@ up_kbd_backlight_led_event_io (GIOChannel *channel, GIOCondition condition, gpoi
 	g_debug ("kbd eventio: brightness: %d", brightness);
 
 	if (brightness < 0)
-		return FALSE;
+		goto remove_watch;
 
 	up_device_kbd_backlight_emit_change (kbd_backlight, brightness, "internal");
 	up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, brightness, TRUE);
 
-	return TRUE;
+	return G_SOURCE_CONTINUE;
+
+remove_watch:
+	priv->watch_id = 0;
+	return G_SOURCE_REMOVE;
 }
 
 /**
@@ -270,8 +275,9 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 	priv->fd_hw_changed = g_open (path_hw_changed, O_RDONLY);
 	if (priv->fd_hw_changed >= 0) {
 		priv->channel_hw_changed = g_io_channel_unix_new (priv->fd_hw_changed);
-		g_io_add_watch (priv->channel_hw_changed,
-				G_IO_PRI, up_kbd_backlight_led_event_io, kbd_backlight);
+		priv->watch_id = g_io_add_watch (priv->channel_hw_changed,
+						 G_IO_PRI | G_IO_HUP | G_IO_NVAL,
+						 up_kbd_backlight_led_event_io, kbd_backlight);
 	}
 
 	up_device_kbd_backlight_report (kbd_backlight, priv->max_brightness, priv->brightness, FALSE);
@@ -294,6 +300,8 @@ up_kbd_backlight_led_finalize (GObject *object)
 
 	kbd_backlight = UP_KBD_BACKLIGHT_LED (object);
 	priv = up_kbd_backlight_led_get_instance_private (kbd_backlight);
+
+	g_clear_handle_id (&priv->watch_id, g_source_remove);
 
 	if (priv->channel_hw_changed) {
 		g_io_channel_shutdown (priv->channel_hw_changed, FALSE, NULL);
