@@ -2734,6 +2734,54 @@ class Tests(dbusmock.DBusTestCase):
         with open("/sys/class/power_supply/BAT0/charge_control_end_threshold") as fp:
             self.assertEqual(fp.read(), "100")
 
+    def test_battery_charge_limit_live_sysfs_value(self):
+        """charge_control_end_threshold live value overrides the hwdb CHARGE_LIMIT default"""
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "85",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT0", "CHARGE_LIMIT", "75,80"
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 1)
+        bat0_up = devs[0]
+
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdSupported"), True
+        )
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeStartThreshold"), 75
+        )
+        self.assertEqual(self.get_dbus_dev_property(bat0_up, "ChargeEndThreshold"), 85)
+
+        self.stop_daemon()
+
     def test_battery_charge_limit_supported_polkit_not_allowed(self):
         """Battery with charge_control_start/end_threshold supported"""
 
@@ -2928,6 +2976,34 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(self.get_dbus_dev_property(device, "State"), UP_DEVICE_STATE_DISCHARGING)
         self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
         self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
+
+    def test_macsmc_kernel_time_charge_units(self):
+        """Kernel estimates coexist with charge-based capacity and live limits."""
+        # Synthetic values, independent of any particular machine.
+        self.testbed.add_device(
+            "power_supply", "macsmc-battery", None,
+            ["type", "Battery", "present", "1", "model_name", "synthetic",
+             "status", "Discharging", "charge_full_design", "9000000",
+             "charge_full", "8550000", "charge_now", "6840000",
+             "voltage_min_design", "12000000", "voltage_now", "13000000",
+             "current_now", "0", "capacity", "80", "cycle_count", "10",
+             "time_to_empty_now", "3600", "time_to_full_now", "1800",
+             "charge_control_start_threshold", "75",
+             "charge_control_end_threshold", "85"], [])
+        self.testbed.set_property("/sys/class/power_supply/macsmc-battery", "CHARGE_LIMIT", "70,80")
+        self.start_daemon()
+        devices = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeCycles"), 10)
+        self.assertAlmostEqual(self.get_dbus_dev_property(device, "Capacity"), 95)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeThresholdSupported"), True)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeStartThreshold"), 75)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeEndThreshold"), 85)
+        with open("/sys/class/power_supply/macsmc-battery/charge_control_end_threshold") as fp:
+            self.assertEqual(fp.read(), "85")
 
     def test_macsmc_kernel_time_charging(self):
         device = self.add_kernel_time_battery(status="Charging", empty="3600", full="1800")
@@ -5303,6 +5379,61 @@ class Tests(dbusmock.DBusTestCase):
         # Wait for UPower to process the new device
         time.sleep(0.5)
         return self.proxy.EnumerateDevices()
+
+    def test_bluetooth_daemon_restart(self):
+        """All Bluetooth batteries disappear and return across BlueZ restart"""
+
+        def add_devices():
+            self.start_bluez()
+            self.bluez_obj.AddAdapter("hci0", "my-computer")
+            for suffix in ("01", "02", "03"):
+                path = self.bluez_obj.AddDevice(
+                    "hci0", "11:22:33:44:AA:" + suffix, "Mouse " + suffix
+                )
+                device = self.dbus_con.get_object("org.bluez", path)
+                device.AddProperties(
+                    BATTERY_IFACE, {"Percentage": dbus.Byte(70, variant_level=1)}
+                )
+
+        add_devices()
+        self.start_daemon()
+        self.assertEventually(lambda: len(self.proxy.EnumerateDevices()), value=3)
+        original_paths = set(self.proxy.EnumerateDevices())
+
+        # Drop/reacquire the name with an initialized mock. Starting another
+        # mock process while UPower watches races the template installation.
+        owner = self.dbus_con.get_name_owner("org.bluez")
+        mock = dbus.Interface(self.dbus_con.get_object(owner, "/"), dbusmock.MOCK_IFACE)
+        mock.AddMethods(
+            dbusmock.MOCK_IFACE,
+            [
+                (
+                    "ReleaseName",
+                    "",
+                    "",
+                    'self.bus_name.get_bus().release_name("org.bluez")',
+                ),
+                (
+                    "AcquireName",
+                    "",
+                    "",
+                    'self.bus_name.get_bus().request_name("org.bluez")',
+                ),
+            ],
+        )
+        mock.ReleaseName()
+        self.assertEventually(lambda: list(self.proxy.EnumerateDevices()), value=[])
+        for path in original_paths:
+            with self.assertRaises(GLib.Error):
+                self.get_dbus_dev_property(path, "Percentage")
+
+        mock.AcquireName()
+        self.assertEventually(
+            lambda: set(self.proxy.EnumerateDevices()), value=original_paths
+        )
+        for path in original_paths:
+            self.assertEqual(self.get_dbus_dev_property(path, "Percentage"), 70.0)
+        self.stop_daemon()
 
     def test_bluetooth_le_mouse(self):
         """Bluetooth LE mouse"""

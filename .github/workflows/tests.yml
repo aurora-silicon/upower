@@ -1,0 +1,33 @@
+name: Linux tests
+on:
+  push:
+    branches: [main, 'fu-*']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  fedora:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Build and test on Fedora 45
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD:/src" -w /src \
+            registry.fedoraproject.org/fedora:45 bash -euxo pipefail -c '
+              dnf install -y gcc meson ninja-build gettext-devel glib2-devel libgudev-devel \
+                gobject-introspection-devel libimobiledevice-devel libplist-devel polkit-devel \
+                systemd-devel umockdev-devel umockdev dbus-daemon python3-dbusmock \
+                python3-gobject python3-packaging python3-lxml
+              meson setup build -Dgtk-doc=false -Dman=false -Dinstalled_tests=false \
+                -Dintrospection=enabled -Didevice=enabled -Dpolkit=enabled
+              meson compile -C build -j8
+              meson test -C build --print-errorlogs --num-processes 8
+              python3 .ci/fail_skipped_tests.py build/meson-logs/testlog.junit.xml
+            '
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: fedora45-test-logs
+          path: build/meson-logs/

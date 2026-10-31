@@ -75,6 +75,7 @@ struct _UpDeviceSupplyBattery
 	gboolean		 charge_threshold_by_charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
+	gboolean		 support_charge_limit;
 };
 
 G_DEFINE_TYPE (UpDeviceSupplyBattery, up_device_supply_battery, UP_TYPE_DEVICE_BATTERY)
@@ -166,12 +167,17 @@ up_device_supply_battery_convert_to_double (const gchar *str_value, gdouble *val
 }
 
 static gboolean
-up_device_supply_battery_get_charge_control_limits (GUdevDevice *native, UpBatteryInfo *info)
+up_device_supply_battery_get_charge_control_limits (UpDeviceSupplyBattery *self,
+						    GUdevDevice *native,
+						    UpBatteryInfo *info)
 {
 	const gchar *charge_limit;
 	g_auto(GStrv) pairs = NULL;
 	gdouble charge_control_start_threshold;
 	gdouble charge_control_end_threshold;
+
+	if (self->support_charge_limit)
+		return TRUE;
 
 	charge_limit = g_udev_device_get_property (native, "CHARGE_LIMIT");
 	if (charge_limit == NULL)
@@ -201,11 +207,22 @@ up_device_supply_battery_get_charge_control_limits (GUdevDevice *native, UpBatte
 
 	info->charge_control_start_threshold = charge_control_start_threshold;
 	info->charge_control_end_threshold = charge_control_end_threshold;
+	self->support_charge_limit = TRUE;
 
-	if (g_udev_device_has_sysfs_attr (native, "charge_control_start_threshold"))
+	/* Live sysfs values override CHARGE_LIMIT; 0 and 100 are the driver defaults */
+	if (g_udev_device_has_sysfs_attr (native, "charge_control_start_threshold")) {
+		gint value = g_udev_device_get_sysfs_attr_as_int_uncached (native, "charge_control_start_threshold");
+		if (value > 0 && value < 100)
+			info->charge_control_start_threshold = value;
 		info->charge_threshold_settings |= UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_START_THRESHOLD;
-	if (g_udev_device_has_sysfs_attr (native, "charge_control_end_threshold"))
+	}
+
+	if (g_udev_device_has_sysfs_attr (native, "charge_control_end_threshold")) {
+		gint value = g_udev_device_get_sysfs_attr_as_int_uncached (native, "charge_control_end_threshold");
+		if (value > 0 && value < 100)
+			info->charge_control_end_threshold = value;
 		info->charge_threshold_settings |= UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_END_THRESHOLD;
+	}
 
 	return TRUE;
 }
@@ -448,7 +465,7 @@ up_device_supply_battery_refresh (UpDevice *device,
 	info.voltage_max_design = g_udev_device_get_sysfs_attr_as_double_uncached (native, "voltage_max_design") / 1000000.0;
 	info.voltage_min_design = g_udev_device_get_sysfs_attr_as_double_uncached (native, "voltage_min_design") / 1000000.0;
 
-	if (up_device_supply_battery_get_charge_control_limits (native, &info)) {
+	if (up_device_supply_battery_get_charge_control_limits (self, native, &info)) {
 		info.charge_control_supported = TRUE;
 		info.charge_control_enabled = FALSE;
 	} else {

@@ -421,14 +421,20 @@ bluez_vanished (GDBusConnection *connection,
 {
 	UpBackend *backend = user_data;
 	GPtrArray *array;
+	g_autoptr(GPtrArray) devices = g_ptr_array_new_with_free_func (g_object_unref);
 	guint i;
 
 	g_debug ("BlueZ disappeared");
 
 	array = up_device_list_get_array (backend->priv->device_list);
+	for (i = 0; i < array->len; i++)
+		g_ptr_array_add (devices, g_object_ref (g_ptr_array_index (array, i)));
+	g_ptr_array_unref (array);
 
-	for (i = 0; i < array->len; i++) {
-		UpDevice *device = UP_DEVICE (g_ptr_array_index (array, i));
+	/* Removing a device mutates device_list. Keep a snapshot, including
+	 * references for the duration of the removal callbacks. */
+	for (i = 0; i < devices->len; i++) {
+		UpDevice *device = UP_DEVICE (g_ptr_array_index (devices, i));
 		if (UP_IS_DEVICE_BLUEZ (device)) {
 			GDBusObject *object;
 
@@ -438,8 +444,6 @@ bluez_vanished (GDBusConnection *connection,
 				g_signal_emit (backend, signals[SIGNAL_DEVICE_REMOVED], 0, device);
 		}
 	}
-
-	g_ptr_array_unref (array);
 
 	g_clear_object (&backend->priv->bluez_client);
 }
@@ -481,6 +485,14 @@ udev_device_added_cb (UpBackend *backend, GObject *device)
 	g_signal_connect (device, "notify::disconnected",
 			  G_CALLBACK (up_device_disconnected_cb), backend);
 	if (UP_IS_DEVICE (device)) {
+		gboolean disconnected;
+
+		g_object_get (device, "disconnected", &disconnected, NULL);
+		if (disconnected) {
+			g_debug ("Device is disconnected, not showing it yet");
+			up_device_unregister (UP_DEVICE (device));
+			return;
+		}
 		if (update_added_duplicate_device (backend, UP_DEVICE (device)))
 			g_signal_emit (backend, signals[SIGNAL_DEVICE_ADDED], 0, device);
 	} else if (UP_IS_DEVICE_KBD_BACKLIGHT (device)) {
