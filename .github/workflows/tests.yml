@@ -19,7 +19,7 @@ jobs:
               dnf install -y gcc meson ninja-build gettext-devel glib2-devel libgudev-devel \
                 gobject-introspection-devel libimobiledevice-devel libplist-devel polkit-devel \
                 systemd-devel umockdev-devel umockdev dbus-daemon python3-dbusmock \
-                python3-gobject python3-packaging
+                python3-gobject python3-packaging python3-lxml
               meson setup build -Dgtk-doc=false -Dman=false -Dinstalled_tests=false \
                 -Dintrospection=enabled -Didevice=enabled -Dpolkit=enabled
               meson compile -C build -j8
