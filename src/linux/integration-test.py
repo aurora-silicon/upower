@@ -2977,6 +2977,34 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
         self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
 
+    def test_macsmc_kernel_time_charge_units(self):
+        """Kernel estimates coexist with charge-based capacity and live limits."""
+        # Synthetic values, independent of any particular machine.
+        self.testbed.add_device(
+            "power_supply", "macsmc-battery", None,
+            ["type", "Battery", "present", "1", "model_name", "synthetic",
+             "status", "Discharging", "charge_full_design", "9000000",
+             "charge_full", "8550000", "charge_now", "6840000",
+             "voltage_min_design", "12000000", "voltage_now", "13000000",
+             "current_now", "0", "capacity", "80", "cycle_count", "10",
+             "time_to_empty_now", "3600", "time_to_full_now", "1800",
+             "charge_control_start_threshold", "75",
+             "charge_control_end_threshold", "85"], [])
+        self.testbed.set_property("/sys/class/power_supply/macsmc-battery", "CHARGE_LIMIT", "70,80")
+        self.start_daemon()
+        devices = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToEmpty"), 3600)
+        self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 0)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeCycles"), 10)
+        self.assertAlmostEqual(self.get_dbus_dev_property(device, "Capacity"), 95)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeThresholdSupported"), True)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeStartThreshold"), 75)
+        self.assertEqual(self.get_dbus_dev_property(device, "ChargeEndThreshold"), 85)
+        with open("/sys/class/power_supply/macsmc-battery/charge_control_end_threshold") as fp:
+            self.assertEqual(fp.read(), "85")
+
     def test_macsmc_kernel_time_charging(self):
         device = self.add_kernel_time_battery(status="Charging", empty="3600", full="1800")
         self.assertEqual(self.get_dbus_dev_property(device, "TimeToFull"), 1800)
