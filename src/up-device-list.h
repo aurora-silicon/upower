@@ -53,6 +53,7 @@ typedef struct
 GType		 up_device_list_get_type		(void);
 UpDeviceList	*up_device_list_new			(void);
 
+gsize		 up_device_list_get_length		(UpDeviceList		*list);
 GObject		*up_device_list_lookup			(UpDeviceList		*list,
 							 GObject		*native);
 gboolean	 up_device_list_insert			(UpDeviceList		*list,

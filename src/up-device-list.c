@@ -165,6 +165,21 @@ up_device_list_get_array (UpDeviceList *list)
 }
 
 /**
+ * up_device_list_get_length:
+ * @list: This class instance
+ *
+ * Get the number of devices in the list.
+ *
+ * Return value: the number of devices in the list.
+ */
+gsize
+up_device_list_get_length (UpDeviceList *list)
+{
+	g_return_val_if_fail (UP_IS_DEVICE_LIST (list), 0);
+	return list->priv->array->len;
+}
+
+/**
  * up_device_list_class_init:
  * @klass: The UpDeviceListClass
  **/

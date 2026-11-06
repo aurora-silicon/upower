@@ -121,6 +121,17 @@ test(
    up_self_test,
 )
 
+if os_backend == 'linux'
+    up_kbd_backlight_led_test = executable('up_kbd_backlight_led_test',
+        sources: [ 'linux/tests/up-kbd-backlight-led-test.c' ],
+        dependencies: upowerd_deps,
+        link_with: [ upowerd_private, upshared['linux'] ],
+        gnu_symbol_visibility: 'hidden',
+        install: false,
+    )
+    test('kbd-backlight-watch', up_kbd_backlight_led_test)
+endif
+
 # On Linux, we can run the additional integration test;
 # defined here as we would have a circular dependency otherwise.
 if os_backend == 'linux' and gobject_introspection.found()
